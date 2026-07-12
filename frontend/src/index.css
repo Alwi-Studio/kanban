@@ -1,0 +1,84 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply font-sans text-[#1A1A2E];
+    background-color: var(--bg-page);
+    margin: 0;
+  }
+
+  :root {
+    --bg-page: #F5F6FA;
+    --bg-sidebar: #FFFFFF;
+    --bg-card: #FFFFFF;
+    --text-primary: #1A1A2E;
+    --text-secondary: #8A8FA3;
+    --brand-purple: #6C4EF5;
+    --col-orange: #F5A623;
+    --col-green: #2ECC71;
+  }
+
+  .dark {
+    --bg-page: #101828;
+    --bg-sidebar: #1D2939;
+    --bg-card: #1D2939;
+    --text-primary: #F9FAFB;
+    --text-secondary: #98A2B3;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #9CA3AF transparent;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white dark:bg-[#1D2939] rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm;
+  }
+  .btn-primary {
+    @apply bg-[#6C4EF5] text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-[#5A3FD6] transition;
+  }
+  .btn-secondary {
+    @apply bg-white dark:bg-[#1D2939] text-gray-700 dark:text-gray-300 px-4 py-2 rounded-full text-sm font-medium border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition;
+  }
+  .input {
+    @apply w-full rounded-full border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-[#6C4EF5]/30 focus:border-[#6C4EF5] transition;
+  }
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-slide-right {
+    animation: slideRight 0.25s ease-out;
+  }
+  @keyframes slideRight {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .animate-scale-in {
+    animation: scaleIn 0.2s ease-out;
+  }
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    height: 6px;
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #9CA3AF;
+    border-radius: 3px;
+  }
+}

@@ -1,0 +1,133 @@
+import { useState, useRef, useEffect } from "react";
+import { useDroppable } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Plus, MoreHorizontal, Trash2, GripVertical } from "lucide-react";
+import TaskCard from "../TaskCard/TaskCard";
+import type { Column, Task } from "../../types";
+
+const COLORS = ["#6C4EF5", "#F5A623", "#2ECC71", "#E74C3C", "#3498DB", "#9B59B6", "#1ABC9C", "#E67E22"];
+
+interface ColumnViewProps {
+  column: Column;
+  colorIndex: number;
+  newTaskTitle: string;
+  onNewTaskTitleChange: (val: string) => void;
+  onAddTask: () => void;
+  onDeleteColumn: () => void;
+  onDeleteTask: (taskId: string) => void;
+  onTaskClick: (task: Task) => void;
+  onRenameColumn: (name: string) => void;
+}
+
+export default function ColumnView({
+  column,
+  colorIndex,
+  newTaskTitle,
+  onNewTaskTitleChange,
+  onAddTask,
+  onDeleteColumn,
+  onDeleteTask,
+  onTaskClick,
+  onRenameColumn,
+}: ColumnViewProps) {
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: column.id });
+  const { attributes, listeners, setNodeRef: setDragRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+    id: `column-${column.id}`,
+  });
+
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const colColor = COLORS[colorIndex % COLORS.length];
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const dragStyle = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : undefined,
+  };
+
+  return (
+    <div
+      ref={setDragRef}
+      style={dragStyle}
+      className="card p-3 w-72 shrink-0 flex flex-col max-h-full"
+    >
+      <div
+        className="flex items-center justify-between px-4 py-2.5 rounded-2xl mb-3"
+        style={{ backgroundColor: colColor }}
+      >
+        <div className="flex items-center gap-1 min-w-0">
+          <button
+            ref={setActivatorNodeRef}
+            {...attributes}
+            {...listeners}
+            className="w-5 h-5 rounded-full bg-white/20 hover:bg-white/40 backdrop-blur-sm flex items-center justify-center text-white/70 hover:text-white transition cursor-grab active:cursor-grabbing shrink-0"
+            title="Drag to reorder"
+          >
+            <GripVertical size={11} />
+          </button>
+          <span className="w-7 h-7 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center text-white text-xs font-bold shrink-0">
+            {column.tasks.length}
+          </span>
+          <h3 className="text-sm font-bold text-white truncate">{column.name}</h3>
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onAddTask}
+            className="w-6 h-6 rounded-full bg-white/30 hover:bg-white/50 backdrop-blur-sm flex items-center justify-center text-white transition"
+            title="Add task"
+          >
+            <Plus size={14} />
+          </button>
+          <div className="relative" ref={menuRef}>
+            <button onClick={() => setMenuOpen(!menuOpen)} className="w-6 h-6 rounded-full bg-white/30 hover:bg-white/50 backdrop-blur-sm flex items-center justify-center text-white transition">
+              <MoreHorizontal size={12} />
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-1 min-w-[120px] z-20 animate-scale-in">
+                <button onClick={() => { document.getElementById(`rename-${column.id}`)?.click(); setMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Rename</button>
+                <button onClick={() => { onDeleteColumn(); setMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
+                  <Trash2 size={12} /> Delete
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div ref={setDropRef} className="flex-1 min-h-[60px] space-y-2.5 overflow-y-auto scrollbar-thin">
+        <SortableContext items={column.tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+          {column.tasks.map((task) => (
+            <TaskCard key={task.id} task={task} onDelete={onDeleteTask} onClick={() => onTaskClick(task)} />
+          ))}
+        </SortableContext>
+        {column.tasks.length === 0 && (
+          <div className="text-gray-300 dark:text-gray-500 text-xs text-center py-8 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl">
+            Drop tasks here
+          </div>
+        )}
+      </div>
+
+      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+        <div className="flex items-center gap-2">
+          <Plus size={14} className="text-gray-400 shrink-0" />
+          <input
+            value={newTaskTitle}
+            onChange={(e) => onNewTaskTitleChange(e.target.value)}
+            placeholder="Add task"
+            className="w-full bg-transparent text-sm text-gray-600 dark:text-gray-400 placeholder-gray-400 outline-none"
+            onKeyDown={(e) => e.key === "Enter" && onAddTask()}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}

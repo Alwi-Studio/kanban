@@ -1,0 +1,170 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String          @id @default(uuid())
+  name         String
+  email        String          @unique
+  passwordHash String          @map("password_hash")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  workspaces   Workspace[]
+  boardMembers BoardMember[]
+  taskAssignees TaskAssignee[]
+  comments     Comment[]
+  activityLogs ActivityLog[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model Workspace {
+  id        String   @id @default(uuid())
+  name      String
+  ownerId   String   @map("owner_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  owner     User     @relation(fields: [ownerId], references: [id])
+  boards    Board[]
+
+  @@map("workspaces")
+}
+
+model Board {
+  id          String         @id @default(uuid())
+  workspaceId String         @map("workspace_id")
+  name        String
+  createdAt   DateTime       @default(now()) @map("created_at")
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id])
+  columns     Column[]
+  members     BoardMember[]
+  labels      Label[]
+  activityLogs ActivityLog[]
+
+  @@map("boards")
+}
+
+model BoardMember {
+  id      String @id @default(uuid())
+  boardId String @map("board_id")
+  userId  String @map("user_id")
+  role    String @default("member") // admin|pm|member|viewer
+
+  board Board @relation(fields: [boardId], references: [id])
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@map("board_members")
+}
+
+model Column {
+  id       String @id @default(uuid())
+  boardId  String @map("board_id")
+  name     String
+  position Int
+  board    Board  @relation(fields: [boardId], references: [id])
+  tasks    Task[]
+
+  @@map("columns")
+}
+
+model Task {
+  id          String         @id @default(uuid())
+  columnId    String         @map("column_id")
+  title       String
+  description String?        @db.Text
+  position    Int
+  dueDate     DateTime?      @map("due_date")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  version     Int            @default(1)
+  column      Column         @relation(fields: [columnId], references: [id])
+  assignees   TaskAssignee[]
+  comments    Comment[]
+  attachments Attachment[]
+  taskLabels  TaskLabel[]
+
+  @@map("tasks")
+}
+
+model TaskAssignee {
+  id     String @id @default(uuid())
+  taskId String @map("task_id")
+  userId String @map("user_id")
+  task   Task   @relation(fields: [taskId], references: [id])
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@map("task_assignees")
+}
+
+model Label {
+  id       String @id @default(uuid())
+  boardId  String @map("board_id")
+  name     String
+  colorHex String @map("color_hex")
+  board    Board  @relation(fields: [boardId], references: [id])
+  tasks    TaskLabel[]
+
+  @@map("labels")
+}
+
+model TaskLabel {
+  taskId  String @map("task_id")
+  labelId String @map("label_id")
+  task    Task   @relation(fields: [taskId], references: [id])
+  label   Label  @relation(fields: [labelId], references: [id])
+
+  @@id([taskId, labelId])
+  @@map("task_labels")
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  taskId    String   @map("task_id")
+  userId    String   @map("user_id")
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+  task      Task     @relation(fields: [taskId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("comments")
+}
+
+model Attachment {
+  id         String   @id @default(uuid())
+  taskId     String   @map("task_id")
+  fileUrl    String   @map("file_url")
+  fileName   String   @map("file_name")
+  fileSize   Int      @map("file_size")
+  uploadedAt DateTime @default(now()) @map("uploaded_at")
+  task       Task     @relation(fields: [taskId], references: [id])
+
+  @@map("attachments")
+}
+
+model ActivityLog {
+  id        String   @id @default(uuid())
+  boardId   String   @map("board_id")
+  userId    String   @map("user_id")
+  action    String
+  createdAt DateTime @default(now()) @map("created_at")
+  board     Board    @relation(fields: [boardId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("activity_logs")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  boardId   String   @map("board_id")
+  taskId    String?  @map("task_id")
+  message   String
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
