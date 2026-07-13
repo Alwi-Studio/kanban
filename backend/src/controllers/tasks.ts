@@ -6,6 +6,7 @@ import { emitBoardEvent } from "../sockets";
 import { createLog } from "../services/activityLog";
 import { createNotification } from "../services/notification";
 import { getUploadedFileUrl } from "../middlewares/upload";
+import { runLabelAutomation } from "../services/automation";
 
 async function emitTaskSnapshot(taskId: string) {
   const task = await prisma.task.findUnique({
@@ -154,8 +155,15 @@ export async function addLabelToTask(req: Request, res: Response, next: NextFunc
     const tl = await taskDetailsService.addLabelToTask(req.params.id, req.params.labelId);
     const boardId = await taskDetailsService.getTaskBoards(req.params.id);
     if (boardId) emitBoardEvent(boardId, "task:label:added", tl);
-    await emitTaskSnapshot(req.params.id);
-    res.status(201).json(tl);
+    const automation = await runLabelAutomation(req.params.id, req.params.labelId);
+    if (automation && boardId) {
+      emitBoardEvent(boardId, "task:updated", automation.task);
+      emitBoardEvent(boardId, "board:refresh", { boardId });
+      if (req.user) await createLog(boardId, req.user.userId, `Automation moved task to "${automation.rule.targetColumn.name}" after label "${automation.rule.label.name}" was added`);
+    } else {
+      await emitTaskSnapshot(req.params.id);
+    }
+    res.status(201).json({ ...tl, automation: automation ? { moved: true, targetColumnId: automation.rule.targetColumnId, task: automation.task } : null });
   } catch (err) { next(err); }
 }
 

@@ -25,11 +25,11 @@ export function setupSocket(_io: Server) {
     socket.on("board:join", async (boardId: string) => {
       if (typeof boardId !== "string") return;
       try {
-        const membership = await prisma.boardMember.findFirst({
-          where: { boardId, userId: socket.data.userId },
-          select: { id: true },
-        });
-        if (membership) socket.join(`board:${boardId}`);
+        const [membership, user] = await Promise.all([
+          prisma.boardMember.findFirst({ where: { boardId, userId: socket.data.userId }, select: { id: true } }),
+          prisma.user.findUnique({ where: { id: socket.data.userId }, select: { isGlobalAdmin: true } }),
+        ]);
+        if (membership || user?.isGlobalAdmin) socket.join(`board:${boardId}`);
         else socket.emit("board:error", { boardId, message: "Forbidden" });
       } catch {
         socket.emit("board:error", { boardId, message: "Could not join board" });

@@ -306,13 +306,9 @@ export default function BoardPage() {
   const openAutomation = async () => {
     if (!id || !board) return;
     setShowAutomation(true);
-    setShowNewLabel(false);
+    setAutomationLabelId(board.labels?.find(label => !automationRules.some(rule => rule.labelId === label.id))?.id || "");
     setAutomationColumnId(board.columns[0]?.id || "");
-    try {
-      const rules = await getAutomationRules(id);
-      setAutomationRules(rules);
-      setAutomationLabelId(board.labels?.find(label => !rules.some(rule => rule.labelId === label.id))?.id || "");
-    }
+    try { setAutomationRules(await getAutomationRules(id)); }
     catch (error: any) { toast(apiError(error, "Failed to load automations"), "error"); }
   };
 

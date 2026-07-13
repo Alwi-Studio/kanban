@@ -25,8 +25,9 @@ export async function getBoard(req: Request, res: Response, next: NextFunction) 
 export async function createBoard(req: Request, res: Response, next: NextFunction) {
   try {
     const { workspace_id, name } = req.body;
+    const user = await prisma.user.findUnique({ where: { id: req.user!.userId }, select: { isGlobalAdmin: true } });
     const workspace = await prisma.workspace.findFirst({
-      where: { id: workspace_id, ownerId: req.user!.userId },
+      where: { id: workspace_id, ...(user?.isGlobalAdmin ? {} : { ownerId: req.user!.userId }) },
       select: { id: true },
     });
     if (!workspace) return res.status(403).json({ error: "You cannot create a board in this workspace" });

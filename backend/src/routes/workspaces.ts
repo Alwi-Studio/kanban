@@ -8,8 +8,9 @@ export const workspaceRouter = Router();
 
 workspaceRouter.get("/", authenticate, async (req, res, next) => {
   try {
+    const user = await prisma.user.findUnique({ where: { id: req.user!.userId }, select: { isGlobalAdmin: true } });
     const workspaces = await prisma.workspace.findMany({
-      where: {
+      where: user?.isGlobalAdmin ? {} : {
         OR: [
           { ownerId: req.user!.userId },
           { boards: { some: { members: { some: { userId: req.user!.userId } } } } },
@@ -17,7 +18,7 @@ workspaceRouter.get("/", authenticate, async (req, res, next) => {
       },
       include: {
         boards: {
-          where: { members: { some: { userId: req.user!.userId } } },
+          where: user?.isGlobalAdmin ? {} : { members: { some: { userId: req.user!.userId } } },
           include: {
             columns: {
               orderBy: { position: "asc" },

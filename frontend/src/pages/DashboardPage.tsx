@@ -49,6 +49,7 @@ function ProgressBar({ value, max, color = "bg-brand" }: { value: number; max: n
 }
 
 type Period = "30d" | "7d" | "24h";
+type StatsView = "personal" | "global";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -56,6 +57,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [period, setPeriod] = useState<Period>("30d");
+  const [statsView, setStatsView] = useState<StatsView>("personal");
 
   const loadStats = () => {
     setLoading(true);
@@ -79,6 +81,7 @@ export default function DashboardPage() {
     "7d": "7 hari",
     "24h": "24 jam",
   };
+  const summary = statsView === "personal" ? stats?.personal : stats;
 
   if (loading) {
     return (
@@ -117,17 +120,25 @@ export default function DashboardPage() {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-1">Overview of your project progress</p>
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{statsView === "personal" ? "Tasks assigned to you" : `${stats?.boardCount || 0} boards in ${stats?.scope === "organization" ? "the organization" : "your accessible workspace"}`}</p>
+          </div>
+          <div className="inline-flex self-start sm:self-auto rounded-xl bg-gray-100 dark:bg-gray-800 p-1">
+            <button onClick={() => setStatsView("personal")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${statsView === "personal" ? "bg-white dark:bg-gray-700 text-brand shadow-sm" : "text-gray-500 dark:text-gray-400"}`}>My statistics</button>
+            <button onClick={() => setStatsView("global")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${statsView === "global" ? "bg-white dark:bg-gray-700 text-brand shadow-sm" : "text-gray-500 dark:text-gray-400"}`}>{stats?.isGlobalAdmin ? "Organization" : "All my boards"}</button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Total Tasks" value={stats?.totalTasks ?? 0} icon={<ListTodo size={20} />} />
-          <StatCard label="Completed" value={stats?.completedTasks ?? 0} icon={<CheckCircle2 size={20} />} color="success" />
-          <StatCard label="Overdue" value={stats?.overdueTasks ?? 0} icon={<AlertCircle size={20} />} color={stats?.overdueTasks ? "danger" : "brand"} />
-          <StatCard label="Avg Completion" value={stats?.avgCompletionTime ? `${stats.avgCompletionTime}d` : "—"} icon={<LayoutDashboard size={20} />} color="brand" />
+          <StatCard label="Total Tasks" value={summary?.totalTasks ?? 0} icon={<ListTodo size={20} />} />
+          <StatCard label="Finished" value={summary?.completedTasks ?? 0} icon={<CheckCircle2 size={20} />} color="success" />
+          <StatCard label="Overdue" value={summary?.overdueTasks ?? 0} icon={<AlertCircle size={20} />} color={summary?.overdueTasks ? "danger" : "brand"} />
+          <StatCard label="Avg Completion" value={summary?.avgCompletionTime ? `${summary.avgCompletionTime}d` : "—"} icon={<LayoutDashboard size={20} />} color="brand" />
         </div>
+
+        <div className="flex items-center gap-2 pt-1"><span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" /><span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Overall workflow</span><span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" /></div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 card p-6">

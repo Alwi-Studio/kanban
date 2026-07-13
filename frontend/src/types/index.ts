@@ -3,6 +3,7 @@ export interface User {
   name: string;
   email: string;
   createdAt?: string;
+  isGlobalAdmin?: boolean;
 }
 
 export interface Workspace {
@@ -47,6 +48,7 @@ export interface Task {
   position: number;
   dueDate: string | null;
   createdAt: string;
+  completedAt?: string | null;
   version: number;
   assignees: TaskAssignee[];
   taskLabels: TaskLabel[];
@@ -125,6 +127,10 @@ export interface NotificationsResponse {
 }
 
 export interface DashboardStats {
+  isGlobalAdmin: boolean;
+  scope: "organization" | "accessible";
+  boardCount: number;
+  personal: Pick<DashboardStats, "totalTasks" | "completedTasks" | "overdueTasks" | "avgCompletionTime">;
   totalTasks: number;
   completedTasks: number;
   overdueTasks: number;
@@ -149,4 +155,16 @@ export interface GlobalBoard extends Board {
 
 export interface GlobalBoardResponse {
   boards: GlobalBoard[];
+  isGlobalAdmin: boolean;
+}
+
+export interface AutomationRule {
+  id: string;
+  boardId: string;
+  labelId: string;
+  targetColumnId: string;
+  enabled: boolean;
+  createdAt: string;
+  label: Label;
+  targetColumn: Column;
 }

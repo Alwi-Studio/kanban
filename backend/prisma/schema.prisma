@@ -8,16 +8,17 @@ datasource db {
 }
 
 model User {
-  id           String          @id @default(uuid())
-  name         String
-  email        String          @unique
-  passwordHash String          @map("password_hash")
-  createdAt    DateTime        @default(now()) @map("created_at")
-  workspaces   Workspace[]
-  boardMembers BoardMember[]
+  id            String         @id @default(uuid())
+  name          String
+  email         String         @unique
+  passwordHash  String         @map("password_hash")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  isGlobalAdmin Boolean        @default(false) @map("is_global_admin")
+  workspaces    Workspace[]
+  boardMembers  BoardMember[]
   taskAssignees TaskAssignee[]
-  comments     Comment[]
-  activityLogs ActivityLog[]
+  comments      Comment[]
+  activityLogs  ActivityLog[]
   notifications Notification[]
 
   @@map("users")
@@ -35,15 +36,16 @@ model Workspace {
 }
 
 model Board {
-  id          String         @id @default(uuid())
-  workspaceId String         @map("workspace_id")
-  name        String
-  createdAt   DateTime       @default(now()) @map("created_at")
-  workspace   Workspace      @relation(fields: [workspaceId], references: [id])
-  columns     Column[]
-  members     BoardMember[]
-  labels      Label[]
-  activityLogs ActivityLog[]
+  id              String           @id @default(uuid())
+  workspaceId     String           @map("workspace_id")
+  name            String
+  createdAt       DateTime         @default(now()) @map("created_at")
+  workspace       Workspace        @relation(fields: [workspaceId], references: [id])
+  columns         Column[]
+  members         BoardMember[]
+  labels          Label[]
+  activityLogs    ActivityLog[]
+  automationRules AutomationRule[]
 
   @@map("boards")
 }
@@ -62,12 +64,13 @@ model BoardMember {
 }
 
 model Column {
-  id       String @id @default(uuid())
-  boardId  String @map("board_id")
-  name     String
-  position Int
-  board    Board  @relation(fields: [boardId], references: [id])
-  tasks    Task[]
+  id                String           @id @default(uuid())
+  boardId           String           @map("board_id")
+  name              String
+  position          Int
+  board             Board            @relation(fields: [boardId], references: [id])
+  tasks             Task[]
+  automationTargets AutomationRule[] @relation("AutomationTargetColumn")
 
   @@index([boardId, position])
   @@map("columns")
@@ -81,6 +84,7 @@ model Task {
   position    Int
   dueDate     DateTime?      @map("due_date")
   createdAt   DateTime       @default(now()) @map("created_at")
+  completedAt DateTime?      @map("completed_at")
   version     Int            @default(1)
   column      Column         @relation(fields: [columnId], references: [id])
   assignees   TaskAssignee[]
@@ -104,12 +108,13 @@ model TaskAssignee {
 }
 
 model Label {
-  id       String @id @default(uuid())
-  boardId  String @map("board_id")
-  name     String
-  colorHex String @map("color_hex")
-  board    Board  @relation(fields: [boardId], references: [id])
-  tasks    TaskLabel[]
+  id              String           @id @default(uuid())
+  boardId         String           @map("board_id")
+  name            String
+  colorHex        String           @map("color_hex")
+  board           Board            @relation(fields: [boardId], references: [id])
+  tasks           TaskLabel[]
+  automationRules AutomationRule[]
 
   @@map("labels")
 }
@@ -172,4 +177,20 @@ model Notification {
 
   @@index([userId, isRead, createdAt])
   @@map("notifications")
+}
+
+model AutomationRule {
+  id             String   @id @default(uuid())
+  boardId        String   @map("board_id")
+  labelId        String   @map("label_id")
+  targetColumnId String   @map("target_column_id")
+  enabled        Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at")
+  board          Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  label          Label    @relation(fields: [labelId], references: [id], onDelete: Cascade)
+  targetColumn   Column   @relation("AutomationTargetColumn", fields: [targetColumnId], references: [id], onDelete: Cascade)
+
+  @@unique([boardId, labelId])
+  @@index([labelId, enabled])
+  @@map("automation_rules")
 }

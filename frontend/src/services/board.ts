@@ -1,5 +1,5 @@
 import api from "./api";
-import type { Board, Column, Task, Comment, Attachment, Label, ActivityLog, NotificationsResponse, DashboardStats, GlobalBoardResponse, Workspace } from "../types";
+import type { Board, Column, Task, Comment, Attachment, Label, ActivityLog, NotificationsResponse, DashboardStats, GlobalBoardResponse, Workspace, AutomationRule } from "../types";
 
 export async function getWorkspaces() {
   const { data } = await api.get("/workspaces");
@@ -108,6 +108,25 @@ export async function createLabel(boardId: string, name: string, colorHex: strin
 
 export async function deleteLabel(boardId: string, labelId: string) {
   await api.delete(`/boards/${boardId}/labels/${labelId}`);
+}
+
+export async function getAutomationRules(boardId: string) {
+  const { data } = await api.get(`/boards/${boardId}/automations`);
+  return data as AutomationRule[];
+}
+
+export async function createAutomationRule(boardId: string, labelId: string, targetColumnId: string) {
+  const { data } = await api.post(`/boards/${boardId}/automations`, { label_id: labelId, target_column_id: targetColumnId });
+  return data as AutomationRule;
+}
+
+export async function updateAutomationRule(boardId: string, ruleId: string, updates: { target_column_id?: string; enabled?: boolean }) {
+  const { data } = await api.patch(`/boards/${boardId}/automations/${ruleId}`, updates);
+  return data as AutomationRule;
+}
+
+export async function deleteAutomationRule(boardId: string, ruleId: string) {
+  await api.delete(`/boards/${boardId}/automations/${ruleId}`);
 }
 
 export async function addLabelToTask(taskId: string, labelId: string) {

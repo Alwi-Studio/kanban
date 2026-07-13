@@ -2,6 +2,10 @@ import prisma from "../lib/prisma";
 
 
 interface DashboardStats {
+  isGlobalAdmin: boolean;
+  scope: "organization" | "accessible";
+  boardCount: number;
+  personal: { totalTasks: number; completedTasks: number; overdueTasks: number; avgCompletionTime: number | null };
   totalTasks: number;
   completedTasks: number;
   overdueTasks: number;
@@ -21,10 +25,9 @@ interface DashboardStats {
 }
 
 export async function getDashboardStats(userId: string): Promise<DashboardStats> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { isGlobalAdmin: true } });
   const boards = await prisma.board.findMany({
-    where: {
-      members: { some: { userId } },
-    },
+    where: user?.isGlobalAdmin ? {} : { members: { some: { userId } } },
     include: {
       columns: {
         orderBy: { position: "asc" },
@@ -43,21 +46,19 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
   const allTasks = boards.flatMap((b) => b.columns.flatMap((c) => c.tasks));
   const doneTasks = allTasks.filter((t) => {
     const col = boards.flatMap((b) => b.columns).find((c) => c.tasks.some((x) => x.id === t.id));
-    return col?.name === "Done";
+    return ["done", "completed", "complete", "selesai"].includes(col?.name.trim().toLowerCase() || "");
   });
   const overdueTasks = allTasks.filter((t) => {
     if (!t.dueDate) return false;
     const col = boards.flatMap((b) => b.columns).find((c) => c.tasks.some((x) => x.id === t.id));
-    return new Date(t.dueDate) < new Date() && col?.name !== "Done";
+    return new Date(t.dueDate) < new Date() && !["done", "completed", "complete", "selesai"].includes(col?.name.trim().toLowerCase() || "");
   });
 
   let avgCompletionTime: number | null = null;
-  const completedWithDuration = doneTasks.filter((t) => {
-    return t.createdAt;
-  });
+  const completedWithDuration = doneTasks.filter((t) => t.completedAt);
   if (completedWithDuration.length > 0) {
     const totalMs = completedWithDuration.reduce((sum, t) => {
-      return sum + (new Date().getTime() - new Date(t.createdAt).getTime());
+      return sum + (t.completedAt!.getTime() - t.createdAt.getTime());
     }, 0);
     avgCompletionTime = Math.round(totalMs / completedWithDuration.length / (1000 * 60 * 60 * 24) * 10) / 10;
   }
@@ -118,7 +119,7 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
     trendMap.set(key, { completed: 0, created: 0 });
   }
   for (const t of doneTasks) {
-    const key = t.createdAt.toISOString().slice(0, 10);
+    const key = (t.completedAt || t.createdAt).toISOString().slice(0, 10);
     if (trendMap.has(key)) {
       trendMap.get(key)!.completed++;
     }
@@ -134,7 +135,24 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
     ...val,
   }));
 
+  const personalTasks = allTasks.filter(task => task.assignees.some(assignee => assignee.userId === userId));
+  const doneIds = new Set(doneTasks.map(task => task.id));
+  const overdueIds = new Set(overdueTasks.map(task => task.id));
+  const personalDone = personalTasks.filter(task => doneIds.has(task.id));
+  const personalDurations = personalDone.filter(task => task.completedAt).map(task => task.completedAt!.getTime() - task.createdAt.getTime());
+
   return {
+    isGlobalAdmin: Boolean(user?.isGlobalAdmin),
+    scope: user?.isGlobalAdmin ? "organization" : "accessible",
+    boardCount: boards.length,
+    personal: {
+      totalTasks: personalTasks.length,
+      completedTasks: personalDone.length,
+      overdueTasks: personalTasks.filter(task => overdueIds.has(task.id)).length,
+      avgCompletionTime: personalDurations.length
+        ? Math.round(personalDurations.reduce((sum, duration) => sum + duration, 0) / personalDurations.length / 8640000) / 10
+        : null,
+    },
     totalTasks: allTasks.length,
     completedTasks: doneTasks.length,
     overdueTasks: overdueTasks.length,

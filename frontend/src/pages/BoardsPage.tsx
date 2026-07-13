@@ -23,7 +23,7 @@ export default function BoardsPage() {
     getWorkspaces()
       .then(data => {
         setWorkspaces(data);
-        const firstOwned = data.find(ws => ws.ownerId === user?.id);
+        const firstOwned = data.find(ws => user?.isGlobalAdmin || ws.ownerId === user?.id);
         setSelectedWorkspaceId(firstOwned?.id || "");
       })
       .catch(() => setLoadError(true))
@@ -43,7 +43,7 @@ export default function BoardsPage() {
     }
   };
 
-  const ownedWorkspaces = workspaces.filter(ws => ws.ownerId === user?.id);
+  const ownedWorkspaces = workspaces.filter(ws => user?.isGlobalAdmin || ws.ownerId === user?.id);
 
   if (loading) {
     return (
@@ -145,7 +145,7 @@ export default function BoardsPage() {
             ) : (
               <div className="card p-8 text-center">
                 <p className="text-gray-400 text-sm">No boards yet in this workspace.</p>
-                {ws.ownerId === user?.id && <button onClick={() => { setSelectedWorkspaceId(ws.id); setShowNewBoard(true); }} className="btn-primary text-xs mt-3">Create your first board</button>}
+                {(user?.isGlobalAdmin || ws.ownerId === user?.id) && <button onClick={() => { setSelectedWorkspaceId(ws.id); setShowNewBoard(true); }} className="btn-primary text-xs mt-3">Create your first board</button>}
               </div>
             )}
           </div>

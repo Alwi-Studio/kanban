@@ -2,8 +2,9 @@ import prisma from "../lib/prisma";
 
 
 export async function listBoards(workspaceId: string, userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { isGlobalAdmin: true } });
   return prisma.board.findMany({
-    where: { workspaceId, members: { some: { userId } } },
+    where: { workspaceId, ...(user?.isGlobalAdmin ? {} : { members: { some: { userId } } }) },
     include: {
       columns: {
         orderBy: { position: "asc" },
@@ -27,8 +28,9 @@ export async function listBoards(workspaceId: string, userId: string) {
 }
 
 export async function getBoard(id: string, userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { isGlobalAdmin: true } });
   return prisma.board.findFirst({
-    where: { id, members: { some: { userId } } },
+    where: { id, ...(user?.isGlobalAdmin ? {} : { members: { some: { userId } } }) },
     include: {
       columns: {
         orderBy: { position: "asc" },

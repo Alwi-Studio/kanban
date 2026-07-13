@@ -20,8 +20,9 @@ export async function register(name: string, email: string, password: string) {
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
+  const isFirstUser = await prisma.user.count() === 0;
   const user = await prisma.user.create({
-    data: { name, email, passwordHash },
+    data: { name, email, passwordHash, isGlobalAdmin: isFirstUser },
   });
 
   // Auto-create default workspace
@@ -59,7 +60,7 @@ export async function register(name: string, email: string, password: string) {
   const refreshToken = generateRefreshToken(payload);
 
   return {
-    user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt },
+    user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt, isGlobalAdmin: user.isGlobalAdmin },
     accessToken,
     refreshToken,
     workspace,
@@ -82,7 +83,7 @@ export async function login(email: string, password: string) {
   const refreshToken = generateRefreshToken(payload);
 
   return {
-    user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt },
+    user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt, isGlobalAdmin: user.isGlobalAdmin },
     accessToken,
     refreshToken,
   };

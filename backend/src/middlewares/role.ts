@@ -22,6 +22,11 @@ export function requireRole(...roles: string[]) {
           boardId = task?.column.boardId || null;
         }
         if (!boardId || !req.user) return next(new AppError(403, "Forbidden"));
+        const globalAdmin = await prisma.user.findUnique({
+          where: { id: req.user.userId },
+          select: { isGlobalAdmin: true },
+        });
+        if (globalAdmin?.isGlobalAdmin) return next();
         const role = await getUserRole(boardId, req.user.userId);
         if (!role || !roles.includes(role)) return next(new AppError(403, "Insufficient permissions"));
         next();

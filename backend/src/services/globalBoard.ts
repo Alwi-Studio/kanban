@@ -1,11 +1,14 @@
 import prisma from "../lib/prisma";
 
 export async function getGlobalBoard(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { isGlobalAdmin: true } });
   const boards = await prisma.board.findMany({
-    where: { members: { some: { userId } } },
+    where: user?.isGlobalAdmin ? {} : { members: { some: { userId } } },
     orderBy: { createdAt: "desc" },
     include: {
       workspace: { select: { id: true, name: true } },
+      members: { include: { user: { select: { id: true, name: true, email: true } } } },
+      labels: true,
       columns: {
         orderBy: { position: "asc" },
         include: {
@@ -25,6 +28,7 @@ export async function getGlobalBoard(userId: string) {
   });
 
   return {
+    isGlobalAdmin: Boolean(user?.isGlobalAdmin),
     boards: boards.map(({ workspace, ...board }) => ({
       ...board,
       workspaceId: workspace.id,

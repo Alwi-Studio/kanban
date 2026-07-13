@@ -1,15 +1,19 @@
 import prisma from "../lib/prisma";
 import { AppError } from "../middlewares/errorHandler";
 
+function isDoneColumn(name: string) {
+  return ["done", "completed", "complete", "selesai"].includes(name.trim().toLowerCase());
+}
 
 export async function createTask(columnId: string, title: string, description?: string) {
-  const maxPos = await prisma.task.aggregate({
-    where: { columnId },
-    _max: { position: true },
-  });
+  const [maxPos, column] = await Promise.all([
+    prisma.task.aggregate({ where: { columnId }, _max: { position: true } }),
+    prisma.column.findUnique({ where: { id: columnId }, select: { name: true } }),
+  ]);
+  if (!column) throw new AppError(404, "Column not found");
   const position = (maxPos._max.position ?? -1) + 1;
   return prisma.task.create({
-    data: { columnId, title, description, position },
+    data: { columnId, title, description, position, completedAt: isDoneColumn(column.name) ? new Date() : null },
     include: {
       assignees: {
         include: { user: { select: { id: true, name: true, email: true } } },
@@ -34,14 +38,14 @@ export async function updateTask(
   if (data.columnId !== undefined || data.position !== undefined) {
     const existing = await prisma.task.findUnique({
       where: { id },
-      select: { id: true, columnId: true, position: true, version: true, column: { select: { boardId: true } } },
+      select: { id: true, columnId: true, position: true, version: true, completedAt: true, column: { select: { boardId: true } } },
     });
     if (!existing) throw new AppError(404, "not found");
     if (data.version !== undefined && existing.version !== data.version) {
       throw new AppError(409, "conflict - refresh and try again");
     }
     const targetColumnId = data.columnId || existing.columnId;
-    const targetColumn = await prisma.column.findUnique({ where: { id: targetColumnId }, select: { boardId: true } });
+    const targetColumn = await prisma.column.findUnique({ where: { id: targetColumnId }, select: { boardId: true, name: true } });
     if (!targetColumn) throw new AppError(404, "Target column not found");
     if (targetColumn.boardId !== existing.column.boardId) {
       throw new AppError(400, "Tasks cannot be moved to another board");
@@ -73,7 +77,14 @@ export async function updateTask(
         await tx.task.update({
           where: { id: task.id },
           data: task.id === id
-            ? { columnId: targetColumnId, position, version: { increment: 1 } }
+            ? {
+                columnId: targetColumnId,
+                position,
+                version: { increment: 1 },
+                ...(existing.columnId !== targetColumnId
+                  ? { completedAt: isDoneColumn(targetColumn.name) ? (existing.completedAt || new Date()) : null }
+                  : {}),
+              }
             : { position },
         });
       }

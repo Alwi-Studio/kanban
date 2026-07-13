@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { AlertCircle, ArrowUpRight, CalendarDays, Layers3, Search, Users } from "lucide-react";
+import { AlertCircle, ArrowUpRight, CalendarDays, Layers3, Plus, Search, ShieldCheck, Users, X } from "lucide-react";
 import Layout from "../components/Layout/Layout";
-import { getGlobalBoard } from "../services/board";
+import TaskModal from "../components/TaskModal/TaskModal";
+import { createTask, getGlobalBoard, updateTask } from "../services/board";
 import type { GlobalBoard, Task } from "../types";
+import { useAuthStore } from "../store/authStore";
+import { useToast } from "../components/ui/Toast";
 
 interface GlobalTask extends Task {
   boardId: string;
@@ -16,6 +19,8 @@ interface GlobalTask extends Task {
 
 export default function GlobalBoardPage() {
   const navigate = useNavigate();
+  const user = useAuthStore(state => state.user);
+  const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [boards, setBoards] = useState<GlobalBoard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,12 +29,21 @@ export default function GlobalBoardPage() {
   const [boardId, setBoardId] = useState("");
   const [workspaceId, setWorkspaceId] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
+  const [selectedTask, setSelectedTask] = useState<GlobalTask | null>(null);
+  const [showNewTask, setShowNewTask] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskBoardId, setNewTaskBoardId] = useState("");
+  const [newTaskColumnId, setNewTaskColumnId] = useState("");
 
   const load = () => {
     setLoading(true);
     setError(false);
     getGlobalBoard()
-      .then(data => setBoards(data.boards))
+      .then(data => {
+        setBoards(data.boards);
+        setNewTaskBoardId(current => current || data.boards[0]?.id || "");
+        setNewTaskColumnId(current => current || data.boards[0]?.columns[0]?.id || "");
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   };
@@ -84,6 +98,28 @@ export default function GlobalBoardPage() {
     setSearchParams(next, { replace: true });
   };
 
+  const moveGlobalTask = async (task: GlobalTask, targetColumnId: string) => {
+    const board = boards.find(item => item.id === task.boardId);
+    const target = board?.columns.find(column => column.id === targetColumnId);
+    if (!target || target.id === task.columnId) return;
+    try {
+      await updateTask(task.id, { column_id: target.id, position: target.tasks.length, version: task.version });
+      toast(`Moved to ${target.name}`, "success");
+      load();
+    } catch (error: any) { toast(error.response?.data?.error || "Failed to move task", "error"); }
+  };
+
+  const createGlobalTask = async () => {
+    if (!newTaskTitle.trim() || !newTaskColumnId) return;
+    try {
+      await createTask(newTaskColumnId, newTaskTitle.trim());
+      setNewTaskTitle("");
+      setShowNewTask(false);
+      toast("Task created", "success");
+      load();
+    } catch (error: any) { toast(error.response?.data?.error || "Failed to create task", "error"); }
+  };
+
   return (
     <Layout>
       <div className="h-full flex flex-col min-w-0">
@@ -92,6 +128,7 @@ export default function GlobalBoardPage() {
             <div className="flex items-center gap-2">
               <Layers3 size={22} className="text-brand" />
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Global board</h1>
+              {user?.isGlobalAdmin && <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-1 text-[10px] font-semibold text-brand"><ShieldCheck size={11} /> Admin editing</span>}
             </div>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{loading ? "Loading tasks…" : `${filteredTasks.length} task${filteredTasks.length === 1 ? "" : "s"} across ${boards.length} board${boards.length === 1 ? "" : "s"}`}.</p>
           </div>
@@ -112,8 +149,21 @@ export default function GlobalBoardPage() {
               <option value="">All assignees</option>
               {assignees.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
             </select>
+            {user?.isGlobalAdmin && <button onClick={() => setShowNewTask(true)} className="btn-primary whitespace-nowrap"><Plus size={15} /> New task</button>}
           </div>
         </div>
+
+        {showNewTask && user?.isGlobalAdmin && <div className="card mb-5 p-4 flex flex-col lg:flex-row gap-2 items-stretch lg:items-center">
+          <input value={newTaskTitle} onChange={event => setNewTaskTitle(event.target.value)} onKeyDown={event => event.key === "Enter" && createGlobalTask()} placeholder="What needs to be done?" className="input flex-1" autoFocus />
+          <select value={newTaskBoardId} onChange={event => { const nextBoard = boards.find(board => board.id === event.target.value); setNewTaskBoardId(event.target.value); setNewTaskColumnId(nextBoard?.columns[0]?.id || ""); }} className="input lg:w-48" aria-label="Board">
+            {boards.map(board => <option key={board.id} value={board.id}>{board.name}</option>)}
+          </select>
+          <select value={newTaskColumnId} onChange={event => setNewTaskColumnId(event.target.value)} className="input lg:w-44" aria-label="Column">
+            {boards.find(board => board.id === newTaskBoardId)?.columns.map(column => <option key={column.id} value={column.id}>{column.name}</option>)}
+          </select>
+          <button onClick={createGlobalTask} disabled={!newTaskTitle.trim() || !newTaskColumnId} className="btn-primary">Create</button>
+          <button onClick={() => setShowNewTask(false)} className="btn-secondary" aria-label="Cancel"><X size={15} /></button>
+        </div>}
 
         {loading && <div className="flex gap-4 overflow-hidden">{[1, 2, 3].map(i => <div key={i} className="w-72 shrink-0 h-80 rounded-2xl bg-gray-200/70 dark:bg-gray-800 animate-pulse" />)}</div>}
 
@@ -146,7 +196,7 @@ export default function GlobalBoardPage() {
                 </header>
                 <div className="space-y-3">
                   {lane.tasks.map(task => (
-                    <button key={task.id} onClick={() => navigate(`/board/${task.boardId}`)} className="card w-full p-4 text-left hover:-translate-y-0.5 hover:shadow-md transition group">
+                    <article key={task.id} onClick={() => user?.isGlobalAdmin ? setSelectedTask(task) : navigate(`/board/${task.boardId}`)} onKeyDown={event => { if (event.key === "Enter") user?.isGlobalAdmin ? setSelectedTask(task) : navigate(`/board/${task.boardId}`); }} role="button" tabIndex={0} className="card w-full p-4 text-left cursor-pointer hover:-translate-y-0.5 hover:shadow-md transition group">
                       <div className="flex items-start justify-between gap-2">
                         <span className="text-[10px] font-medium text-brand bg-brand/10 rounded-full px-2 py-1 truncate">{task.boardName}</span>
                         <ArrowUpRight size={14} className="text-gray-300 group-hover:text-brand shrink-0" />
@@ -161,13 +211,22 @@ export default function GlobalBoardPage() {
                           {task.assignees.length > 0 && <span className="flex items-center gap-1"><Users size={11} />{task.assignees.length}</span>}
                         </div>
                       </div>
-                    </button>
+                      {user?.isGlobalAdmin && <select value={task.columnId} onClick={event => event.stopPropagation()} onChange={event => { event.stopPropagation(); moveGlobalTask(task, event.target.value); }} className="input mt-3 py-1.5 text-[11px]" aria-label={`Move ${task.title}`}>
+                        {boards.find(board => board.id === task.boardId)?.columns.map(column => <option key={column.id} value={column.id}>Move to: {column.name}</option>)}
+                      </select>}
+                    </article>
                   ))}
                 </div>
               </section>
             ))}
           </div>
         )}
+
+        {selectedTask && user?.isGlobalAdmin && (() => {
+          const sourceBoard = boards.find(board => board.id === selectedTask.boardId);
+          if (!sourceBoard) return null;
+          return <TaskModal task={selectedTask} board={sourceBoard} canEdit onClose={() => { setSelectedTask(null); load(); }} onUpdate={task => { setSelectedTask(current => current ? { ...current, ...task } : null); load(); }} />;
+        })()}
       </div>
     </Layout>
   );
