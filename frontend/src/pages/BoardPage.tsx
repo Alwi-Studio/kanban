@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable";
-import { Plus, Filter, List, ListTodo, X, Users, Tag, Share2, Search, Upload, ArrowUpDown, Eye, MessageSquare, Zap } from "lucide-react";
+import { Plus, Filter, List, ListTodo, X, Users, Tag, Share2, Search, Upload, ArrowUpDown, Eye, MessageSquare, Zap, Globe } from "lucide-react";
 import { useBoardStore } from "../store/boardStore";
 import { getBoard, createColumn, deleteColumn, updateColumn, updateTask, createTask, deleteTask, createLabel, deleteLabel, getActivityLogs, inviteMember, updateMemberRole, removeMember, updateBoard, deleteBoard, getAutomationRules, createAutomationRule, updateAutomationRule, deleteAutomationRule } from "../services/board";
 import { connectSocket, joinBoard, leaveBoard } from "../services/socket";
@@ -370,7 +370,7 @@ export default function BoardPage() {
       return;
     }
     try {
-      const updated = await updateBoard(id, boardNameValue.trim());
+      const updated = await updateBoard(id, { name: boardNameValue.trim() });
       setCurrentBoard({ ...board!, name: updated.name });
       setEditingBoard(false);
       toast("Board renamed", "success");
@@ -378,6 +378,18 @@ export default function BoardPage() {
       setBoardNameValue(board?.name || "");
       setEditingBoard(false);
       toast("Failed to rename board", "error");
+    }
+  };
+
+  const handleToggleGlobal = async () => {
+    if (!id || !board) return;
+    const next = !board.isGlobal;
+    try {
+      const updated = await updateBoard(id, { isGlobal: next });
+      setCurrentBoard({ ...board, isGlobal: updated.isGlobal });
+      toast(next ? "Board added to the Global board" : "Board removed from the Global board", "success");
+    } catch (error: any) {
+      toast(apiError(error, "Failed to update the board"), "error");
     }
   };
 
@@ -607,6 +619,9 @@ export default function BoardPage() {
               </button>}
               {canManageBoard && <button onClick={openAutomation} className={`p-1.5 rounded-full transition ${showAutomation ? "text-amber-500 bg-amber-500/10" : "text-gray-400 hover:text-amber-500 hover:bg-amber-500/10"}`} title="Automation rules">
                 <Zap size={14} />
+              </button>}
+              {canManageBoard && <button onClick={handleToggleGlobal} aria-pressed={Boolean(board.isGlobal)} className={`p-1.5 rounded-full transition ${board.isGlobal ? "text-brand bg-brand/10" : "text-gray-400 hover:text-brand hover:bg-brand/10"}`} title={board.isGlobal ? "On the Global board — click to remove" : "Show on the Global board"}>
+                <Globe size={14} />
               </button>}
               <select
                 value={sortBy}

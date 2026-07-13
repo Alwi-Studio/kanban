@@ -18,6 +18,7 @@ export interface Board {
   id: string;
   workspaceId: string;
   name: string;
+  isGlobal?: boolean;
   createdAt: string;
   columns: Column[];
   members?: BoardMember[];

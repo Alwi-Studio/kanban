@@ -30,7 +30,9 @@ export async function listBoards(workspaceId: string, userId: string) {
 export async function getBoard(id: string, userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { isGlobalAdmin: true } });
   return prisma.board.findFirst({
-    where: { id, ...(user?.isGlobalAdmin ? {} : { members: { some: { userId } } }) },
+    // Global admins see any board; everyone else sees boards they belong to or
+    // any board marked global (org-wide, read-only for non-members).
+    where: user?.isGlobalAdmin ? { id } : { id, OR: [{ isGlobal: true }, { members: { some: { userId } } }] },
     include: {
       columns: {
         orderBy: { position: "asc" },
@@ -79,10 +81,13 @@ export async function createBoard(workspaceId: string, name: string, userId: str
   });
 }
 
-export async function updateBoard(id: string, name: string) {
+export async function updateBoard(id: string, data: { name?: string; isGlobal?: boolean }) {
   return prisma.board.update({
     where: { id },
-    data: { name },
+    data: {
+      ...(data.name !== undefined ? { name: data.name } : {}),
+      ...(data.isGlobal !== undefined ? { isGlobal: data.isGlobal } : {}),
+    },
   });
 }
 

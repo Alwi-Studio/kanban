@@ -19,8 +19,9 @@ const createBoardSchema = z.object({
 });
 
 const updateBoardSchema = z.object({
-  name: z.string().trim().min(1).max(100),
-});
+  name: z.string().trim().min(1).max(100).optional(),
+  isGlobal: z.boolean().optional(),
+}).refine(value => value.name !== undefined || value.isGlobal !== undefined, "No changes supplied");
 
 const createColumnSchema = z.object({ name: z.string().trim().min(1).max(100) });
 const createLabelSchema = z.object({

@@ -38,9 +38,12 @@ export async function createBoard(req: Request, res: Response, next: NextFunctio
 
 export async function updateBoard(req: Request, res: Response, next: NextFunction) {
   try {
-    const { name } = req.body;
-    const board = await boardService.updateBoard(req.params.id, name);
-    if (req.user) await createLog(req.params.id, req.user.userId, `Renamed board to "${name}"`);
+    const { name, isGlobal } = req.body;
+    const board = await boardService.updateBoard(req.params.id, { name, isGlobal });
+    if (req.user) {
+      if (name !== undefined) await createLog(req.params.id, req.user.userId, `Renamed board to "${name}"`);
+      if (isGlobal !== undefined) await createLog(req.params.id, req.user.userId, isGlobal ? "Added board to the global board" : "Removed board from the global board");
+    }
     res.json(board);
   } catch (err) { next(err); }
 }

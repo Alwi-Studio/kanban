@@ -21,8 +21,8 @@ export async function createBoard(workspaceId: string, name: string) {
   return data as Board;
 }
 
-export async function updateBoard(id: string, name: string) {
-  const { data } = await api.patch(`/boards/${id}`, { name });
+export async function updateBoard(id: string, updates: { name?: string; isGlobal?: boolean }) {
+  const { data } = await api.patch(`/boards/${id}`, updates);
   return data as Board;
 }
 

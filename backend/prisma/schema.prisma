@@ -53,6 +53,7 @@ model Board {
   id              String           @id @default(uuid())
   workspaceId     String           @map("workspace_id")
   name            String
+  isGlobal        Boolean          @default(false) @map("is_global")
   createdAt       DateTime         @default(now()) @map("created_at")
   workspace       Workspace        @relation(fields: [workspaceId], references: [id])
   columns         Column[]

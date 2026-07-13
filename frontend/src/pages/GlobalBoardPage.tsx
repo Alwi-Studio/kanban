@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { AlertCircle, ArrowUpRight, CheckCircle2, Columns3, Layers3, ListTodo, Search, ShieldCheck } from "lucide-react";
+import { AlertCircle, ArrowUpRight, CheckCircle2, Columns3, Layers3, ListTodo, Search } from "lucide-react";
 import Layout from "../components/Layout/Layout";
 import AvatarStack from "../components/ui/AvatarStack";
 import { getGlobalBoard } from "../services/board";
 import type { GlobalBoard } from "../types";
-import { useAuthStore } from "../store/authStore";
 
 interface BoardSummary {
   id: string;
@@ -20,7 +19,6 @@ interface BoardSummary {
 
 export default function GlobalBoardPage() {
   const navigate = useNavigate();
-  const user = useAuthStore(state => state.user);
   const [searchParams, setSearchParams] = useSearchParams();
   const [boards, setBoards] = useState<GlobalBoard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,9 +87,8 @@ export default function GlobalBoardPage() {
             <div className="flex items-center gap-2">
               <Layers3 size={22} className="text-brand" />
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Global board</h1>
-              {user?.isGlobalAdmin && <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2 py-1 text-[10px] font-semibold text-brand"><ShieldCheck size={11} /> All boards</span>}
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{loading ? "Loading boards…" : `${filtered.length} board${filtered.length === 1 ? "" : "s"}. Open one to jump straight in.`}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{loading ? "Loading boards…" : `${filtered.length} board${filtered.length === 1 ? "" : "s"} shared org-wide. Open one to jump straight in.`}</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:flex gap-2">
             <label className="relative sm:col-span-2 xl:w-64">
@@ -122,8 +119,8 @@ export default function GlobalBoardPage() {
         {!loading && !error && filtered.length === 0 && (
           <div className="card p-10 text-center max-w-lg mx-auto mt-12">
             <Layers3 size={36} className="text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-            <h2 className="font-semibold text-gray-900 dark:text-white">No matching boards</h2>
-            <p className="text-sm text-gray-500 mt-1">Try clearing the search or workspace filter.</p>
+            <h2 className="font-semibold text-gray-900 dark:text-white">{query || workspaceId ? "No matching boards" : "No boards on the Global board yet"}</h2>
+            <p className="text-sm text-gray-500 mt-1">{query || workspaceId ? "Try clearing the search or workspace filter." : "Open a board and use the globe icon in its toolbar to share it here."}</p>
           </div>
         )}
 
