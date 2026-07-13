@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, LogOut, Moon, Sun, User, Settings } from "lucide-react";
+import { Bell, LogOut, Moon, Sun, Shield, User, Settings } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { logout } from "../../services/auth";
+import RoleBadge from "../ui/RoleBadge";
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from "../../services/board";
 import type { Notification } from "../../types";
 import { connectSocket } from "../../services/socket";
@@ -128,11 +129,17 @@ export default function Topbar() {
           <div className="user-panel absolute top-full right-0 mt-2 bg-white dark:bg-[#1D2939] rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg w-44 z-50 py-1 overflow-hidden">
             <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-700">
               <p className="text-xs font-medium text-[#1A1A2E] dark:text-white">{user?.name}</p>
-              <p className="text-[10px] text-gray-400">{user?.email}</p>
+              <p className="text-[10px] text-gray-400 truncate">{user?.email}</p>
+              {user?.isGlobalAdmin && <div className="mt-1.5"><RoleBadge role="global" /></div>}
             </div>
             <button onClick={() => { setShowUserMenu(false); navigate("/profile"); }} className="w-full flex items-center gap-2 px-4 py-2 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800">
               <User size={12} /> Profile
             </button>
+            {user?.isGlobalAdmin && (
+              <button onClick={() => { setShowUserMenu(false); navigate("/admin"); }} className="w-full flex items-center gap-2 px-4 py-2 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800">
+                <Shield size={12} /> Admin
+              </button>
+            )}
             <button onClick={() => { setShowUserMenu(false); navigate("/settings"); }} className="w-full flex items-center gap-2 px-4 py-2 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800">
               <Settings size={12} /> Settings
             </button>

@@ -12,6 +12,7 @@ const BoardsPage = lazy(() => import("./pages/BoardsPage"));
 const GlobalBoardPage = lazy(() => import("./pages/GlobalBoardPage"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
 
 function AppLoading() {
   return (
@@ -68,6 +69,7 @@ export default function App() {
         <Route path="/board/:id" element={<ProtectedRoute><BoardPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes></Suspense>
     </ToastProvider>

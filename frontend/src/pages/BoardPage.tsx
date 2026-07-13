@@ -11,6 +11,7 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 import ColumnView from "../components/Column/ColumnView";
 import TaskCard from "../components/TaskCard/TaskCard";
 import TaskModal from "../components/TaskModal/TaskModal";
+import RoleBadge from "../components/ui/RoleBadge";
 import Layout from "../components/Layout/Layout";
 import type { Task, Column, Label, ActivityLog, BoardMember, AutomationRule } from "../types";
 import { useAuthStore } from "../store/authStore";
@@ -735,6 +736,7 @@ export default function BoardPage() {
                   </select>
                   <button onClick={() => handleRemoveMember(m.userId, m.user.name)} className="p-1 rounded text-gray-300 dark:text-gray-600 hover:text-red-500 transition"><X size={12} /></button>
                 </div>}
+                {!canManageBoard && <RoleBadge role={m.role} />}
               </div>
             ))}
           </div>

@@ -158,6 +158,23 @@ export interface GlobalBoardResponse {
   isGlobalAdmin: boolean;
 }
 
+export interface AdminUserMembership {
+  boardId: string;
+  boardName: string;
+  role: string;
+}
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  isGlobalAdmin: boolean;
+  boardCount: number;
+  adminBoardCount: number;
+  memberships: AdminUserMembership[];
+}
+
 export interface AutomationRule {
   id: string;
   boardId: string;

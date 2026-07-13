@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Columns3, LayoutDashboard, Layers3, LogOut, Search, Settings, User, X, Command } from "lucide-react";
+import { Columns3, LayoutDashboard, Layers3, LogOut, Search, Settings, Shield, User, X, Command } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { logout } from "../../services/auth";
+import RoleBadge from "../ui/RoleBadge";
 
 const menuItems = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
-  { icon: Layers3, label: "Global board", path: "/global" },
-  { icon: Columns3, label: "Boards", path: "/boards" },
-  { icon: User, label: "Profile", path: "/profile" },
-  { icon: Settings, label: "Settings", path: "/settings" },
+  { icon: LayoutDashboard, label: "Dashboard", path: "/", adminOnly: false },
+  { icon: Layers3, label: "Global board", path: "/global", adminOnly: false },
+  { icon: Columns3, label: "Boards", path: "/boards", adminOnly: false },
+  { icon: Shield, label: "Admin", path: "/admin", adminOnly: true },
+  { icon: User, label: "Profile", path: "/profile", adminOnly: false },
+  { icon: Settings, label: "Settings", path: "/settings", adminOnly: false },
 ];
 
 interface SidebarProps {
@@ -77,7 +79,7 @@ export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
         </form>
 
         <nav className="flex-1 px-3 py-1 space-y-0.5 overflow-y-auto">
-          {menuItems.map(item => {
+          {menuItems.filter(item => !item.adminOnly || user?.isGlobalAdmin).map(item => {
             const active = isActive(item.path);
             return (
               <button key={item.path} onClick={() => go(item.path)} aria-current={active ? "page" : undefined} className={`relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition ${active ? "bg-brand/10 text-brand dark:text-brand-200" : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>
@@ -94,7 +96,9 @@ export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
             <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center text-white text-xs font-medium shrink-0">{user?.name?.charAt(0).toUpperCase() || "U"}</div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-[#1A1A2E] dark:text-white truncate">{user?.name || "User"}</p>
-              <p className="text-[10px] text-gray-400 truncate">{user?.email}</p>
+              {user?.isGlobalAdmin
+                ? <div className="mt-0.5"><RoleBadge role="global" /></div>
+                : <p className="text-[10px] text-gray-400 truncate">{user?.email}</p>}
             </div>
             <button onClick={handleLogout} aria-label="Sign out" title="Sign out" className="p-1.5 text-gray-400 hover:text-red-500"><LogOut size={15} /></button>
           </div>

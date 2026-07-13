@@ -13,6 +13,7 @@ import { memberRouter } from "./routes/members";
 import { notificationRouter } from "./routes/notifications";
 import { dashboardRouter } from "./routes/dashboard";
 import { globalBoardRouter } from "./routes/globalBoard";
+import { adminRouter } from "./routes/admin";
 import { errorHandler } from "./middlewares/errorHandler";
 import { setupSocket } from "./sockets";
 import { getAttachmentStorageStatus, UPLOAD_DIR } from "./middlewares/upload";
@@ -71,6 +72,7 @@ app.use("/api", memberRouter);
 app.use("/api/notifications", notificationRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/global-board", globalBoardRouter);
+app.use("/api/admin", adminRouter);
 
 app.get("/health", (_req, res) => res.status(200).json({ status: "ok", attachmentStorage: getAttachmentStorageStatus() }));
 
