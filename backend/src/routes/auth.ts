@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import * as authController from "../controllers/auth";
 import { validate } from "../middlewares/validate";
+import { authenticate } from "../middlewares/auth";
 
 export const authRouter = Router();
 
@@ -16,7 +17,24 @@ const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().trim().email("Invalid email").transform(value => value.toLowerCase()),
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Reset token is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
 authRouter.post("/register", validate(registerSchema), authController.register);
 authRouter.post("/login", validate(loginSchema), authController.login);
 authRouter.post("/refresh", authController.refresh);
 authRouter.post("/logout", authController.logout);
+authRouter.patch("/password", authenticate, validate(changePasswordSchema), authController.changePassword);
+authRouter.post("/forgot-password", validate(forgotPasswordSchema), authController.forgotPassword);
+authRouter.post("/reset-password", validate(resetPasswordSchema), authController.resetPassword);

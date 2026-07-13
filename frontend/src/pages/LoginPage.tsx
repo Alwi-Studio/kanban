@@ -20,7 +20,16 @@ export default function LoginPage() {
       setUser(res.user);
       navigate("/");
     } catch (err: any) {
-      setError(err.response?.data?.error || "Login failed");
+      if (err.response?.data?.error) {
+        // The server answered with a real reason (e.g. wrong credentials).
+        setError(err.response.data.error);
+      } else if (err.response) {
+        setError(`Server error (${err.response.status}). Please try again shortly.`);
+      } else {
+        // No response at all: server unreachable, wrong API URL, or CORS blocked.
+        setError("Can't reach the server. Check your connection, or that the backend is running and the API URL is correct.");
+        console.error("[LoginPage] Network/no-response error:", { message: err?.message, code: err?.code });
+      }
     } finally {
       setSubmitting(false);
     }

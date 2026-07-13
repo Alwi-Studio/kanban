@@ -64,6 +64,35 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
   }
 }
 
+export async function changePassword(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    await authService.changePassword(req.user!.userId, currentPassword, newPassword);
+    res.json({ message: "Password updated" });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function forgotPassword(req: Request, res: Response, next: NextFunction) {
+  try {
+    await authService.requestPasswordReset(req.body.email);
+    // Always the same response so an attacker cannot probe which emails exist.
+    res.json({ message: "If an account exists for that email, a reset link has been sent." });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function resetPassword(req: Request, res: Response, next: NextFunction) {
+  try {
+    await authService.resetPassword(req.body.token, req.body.password);
+    res.json({ message: "Password has been reset" });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function logout(_req: Request, res: Response) {
   res.clearCookie(REFRESH_COOKIE, {
     httpOnly: COOKIE_OPTIONS.httpOnly,
