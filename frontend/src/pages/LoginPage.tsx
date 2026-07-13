@@ -27,35 +27,39 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md w-96">
-        <h1 className="text-2xl font-bold mb-6 text-center">Sign In</h1>
-        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+    <div className="min-h-screen flex items-center justify-center bg-bg-page dark:bg-bg-dark px-4">
+      <form onSubmit={handleSubmit} className="card p-8 sm:p-10 w-full max-w-md shadow-xl">
+        <div className="w-11 h-11 rounded-xl bg-brand flex items-center justify-center text-white font-bold mx-auto mb-5">A</div>
+        <h1 className="text-2xl font-bold mb-1 text-center text-gray-900 dark:text-white">Welcome back</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 text-center mb-7">Sign in to continue to your workspace</p>
+        {error && <p className="text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 rounded-xl px-3 py-2.5 text-sm mb-4" role="alert">{error}</p>}
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-1">Email</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">Email</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full border rounded px-3 py-2"
+            className="input"
+            autoComplete="email"
             required
           />
         </div>
         <div className="mb-6">
-          <label className="block text-sm font-medium mb-1">Password</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1.5">Password</label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full border rounded px-3 py-2"
+            className="input"
+            autoComplete="current-password"
             required
           />
         </div>
-        <button type="submit" disabled={submitting} className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50">
+        <button type="submit" disabled={submitting} className="btn-primary w-full py-2.5">
           {submitting ? "Signing in..." : "Sign In"}
         </button>
-        <p className="text-sm text-center mt-4">
-          Don't have an account? <Link to="/register" className="text-blue-600">Register</Link>
+        <p className="text-sm text-gray-500 dark:text-gray-400 text-center mt-5">
+          Don't have an account? <Link to="/register" className="text-brand font-semibold hover:underline">Create one</Link>
         </p>
       </form>
     </div>

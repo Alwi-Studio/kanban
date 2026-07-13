@@ -24,7 +24,7 @@ export default function ConfirmDialog({ open, title, message, confirmLabel = "De
           </div>
           <div>
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{title}</h3>
-            <p className="text-xs text-gray-500 mt-0.5">{message}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{message}</p>
           </div>
         </div>
         <div className="flex justify-end gap-2">

@@ -165,7 +165,7 @@ export default function DashboardPage() {
                       <stop offset="100%" stopColor="#12B76A" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 11, fill: "#9CA3AF" }}
@@ -178,8 +178,9 @@ export default function DashboardPage() {
                   <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: "#9CA3AF" }} />
                   <Tooltip
                     contentStyle={{
-                      background: "#fff",
-                      border: "1px solid #E5E7EB",
+                      background: "var(--chart-tooltip)",
+                      color: "var(--text-primary)",
+                      border: "1px solid var(--border-subtle)",
                       borderRadius: "8px",
                       fontSize: "12px",
                     }}

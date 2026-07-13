@@ -93,7 +93,7 @@ export default function GlobalBoardPage() {
               <Layers3 size={22} className="text-brand" />
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Global board</h1>
             </div>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">A read-only overview of every board you can access.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{loading ? "Loading tasks…" : `${filteredTasks.length} task${filteredTasks.length === 1 ? "" : "s"} across ${boards.length} board${boards.length === 1 ? "" : "s"}`}.</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:flex gap-2">
             <label className="relative sm:col-span-2 xl:w-64">

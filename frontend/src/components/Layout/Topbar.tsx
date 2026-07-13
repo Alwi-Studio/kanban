@@ -89,12 +89,12 @@ export default function Topbar() {
 
   return (
     <div className="flex items-center gap-2">
-      <button onClick={() => setDark(!dark)} className="p-2 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
+      <button onClick={() => setDark(!dark)} aria-label={dark ? "Use light mode" : "Use dark mode"} title={dark ? "Use light mode" : "Use dark mode"} className="p-2.5 rounded-xl text-gray-500 dark:text-gray-300 hover:text-brand hover:bg-brand/10 transition">
         {dark ? <Sun size={16} /> : <Moon size={16} />}
       </button>
 
       <div className="relative notif-btn">
-        <button onClick={() => { setShowNotif(!showNotif); if (!showNotif) loadNotifs(); }} className="p-2 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition relative">
+        <button onClick={() => { setShowNotif(!showNotif); if (!showNotif) loadNotifs(); }} aria-label="Notifications" className="p-2.5 rounded-xl text-gray-500 dark:text-gray-300 hover:text-brand hover:bg-brand/10 transition relative">
           <Bell size={16} />
           {unread > 0 && <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-red-500 text-white text-[8px] rounded-full flex items-center justify-center font-medium">{unread}</span>}
         </button>
@@ -107,7 +107,7 @@ export default function Topbar() {
             {notifs.length === 0 && <p className="text-gray-400 text-xs text-center py-6">No notifications</p>}
             {notifs.map(n => (
               <div key={n.id} className={`px-4 py-3 text-xs border-b border-gray-100 dark:border-gray-700 last:border-0 ${n.isRead ? "" : "bg-[#6C4EF5]/5"}`}>
-                <p className={n.isRead ? "text-gray-500" : "text-gray-800 dark:text-gray-200"}>{n.message}</p>
+                <p className={n.isRead ? "text-gray-500 dark:text-gray-400" : "text-gray-800 dark:text-gray-100"}>{n.message}</p>
                 <div className="flex items-center justify-between mt-1">
                   <span className="text-gray-400 text-[10px]">{new Date(n.createdAt).toLocaleDateString()}</span>
                   {!n.isRead && <button onClick={() => handleMarkRead(n.id)} className="text-[#6C4EF5] text-[10px]">Read</button>}

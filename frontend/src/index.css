@@ -6,8 +6,9 @@
 
 @layer base {
   body {
-    @apply font-sans text-[#1A1A2E];
+    @apply font-sans antialiased;
     background-color: var(--bg-page);
+    color: var(--text-primary);
     margin: 0;
   }
 
@@ -17,17 +18,36 @@
     --bg-card: #FFFFFF;
     --text-primary: #1A1A2E;
     --text-secondary: #8A8FA3;
+    --border-subtle: #E4E7EC;
+    --chart-tooltip: #FFFFFF;
     --brand-purple: #6C4EF5;
     --col-orange: #F5A623;
     --col-green: #2ECC71;
   }
 
   .dark {
-    --bg-page: #101828;
-    --bg-sidebar: #1D2939;
+    --bg-page: #0C111D;
+    --bg-sidebar: #161B26;
     --bg-card: #1D2939;
-    --text-primary: #F9FAFB;
-    --text-secondary: #98A2B3;
+    --text-primary: #F2F4F7;
+    --text-secondary: #B0B8C4;
+    --border-subtle: #344054;
+    --chart-tooltip: #1D2939;
+    color-scheme: dark;
+  }
+
+  button, input, textarea, select {
+    font: inherit;
+    color: inherit;
+  }
+
+  ::selection {
+    background: rgb(108 78 245 / 0.28);
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(108 78 245 / 0.7);
+    outline-offset: 2px;
   }
 
   * {
@@ -38,16 +58,16 @@
 
 @layer components {
   .card {
-    @apply bg-white dark:bg-[#1D2939] rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm;
+    @apply bg-white dark:bg-[#1D2939] rounded-2xl border border-gray-200/80 dark:border-gray-700 shadow-sm;
   }
   .btn-primary {
-    @apply bg-[#6C4EF5] text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-[#5A3FD6] transition;
+    @apply inline-flex items-center justify-center gap-2 bg-[#6C4EF5] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-[#5A3FD6] active:scale-[0.98] transition disabled:cursor-not-allowed disabled:opacity-50;
   }
   .btn-secondary {
-    @apply bg-white dark:bg-[#1D2939] text-gray-700 dark:text-gray-300 px-4 py-2 rounded-full text-sm font-medium border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition;
+    @apply inline-flex items-center justify-center gap-2 bg-white dark:bg-[#1D2939] text-gray-700 dark:text-gray-200 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-[0.98] transition;
   }
   .input {
-    @apply w-full rounded-full border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-[#6C4EF5]/30 focus:border-[#6C4EF5] transition;
+    @apply w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3.5 py-2 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-[#6C4EF5]/30 focus:border-[#6C4EF5] transition;
   }
   .animate-slide-up {
     animation: slideUp 0.3s ease-out;

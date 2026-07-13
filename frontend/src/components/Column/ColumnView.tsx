@@ -103,10 +103,10 @@ export default function ColumnView({
     <div
       ref={setDragRef}
       style={dragStyle}
-      className="card p-3 w-72 shrink-0 flex flex-col max-h-full"
+      className={`w-[19rem] shrink-0 flex flex-col max-h-full rounded-2xl border p-3 transition-colors ${isOver ? "border-brand bg-brand/5 dark:bg-brand/10" : "border-gray-200 dark:border-gray-700 bg-gray-100/70 dark:bg-[#161B26]"}`}
     >
       <div
-        className="flex items-center justify-between px-4 py-2.5 rounded-2xl mb-3"
+        className="flex items-center justify-between px-3.5 py-2.5 rounded-xl mb-3 shadow-sm"
         style={{ backgroundColor: colColor }}
       >
         <div className="flex items-center gap-1 min-w-0">
@@ -170,7 +170,7 @@ export default function ColumnView({
         </div>
       </div>
 
-      <div ref={setDropRef} className="flex-1 min-h-[60px] space-y-2.5 overflow-y-auto scrollbar-thin">
+      <div ref={setDropRef} className="flex-1 min-h-[72px] space-y-2.5 overflow-y-auto scrollbar-thin px-0.5">
         <SortableContext items={column.tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {column.tasks.map((task) => (
             <TaskCard key={task.id} task={task} onDelete={canEditTasks ? onDeleteTask : undefined} onClick={() => onTaskClick(task)} disabled={!canReorderTasks} />
@@ -183,14 +183,15 @@ export default function ColumnView({
         )}
       </div>
 
-      {canEditTasks && <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-        <div className="flex items-center gap-2">
+      {canEditTasks && <div className="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-2 rounded-xl px-2 py-1.5 hover:bg-white dark:hover:bg-gray-800 transition-colors focus-within:bg-white dark:focus-within:bg-gray-800 focus-within:ring-2 focus-within:ring-brand/20">
           <Plus size={14} className="text-gray-400 shrink-0" />
           <input
             value={newTaskTitle}
             onChange={(e) => onNewTaskTitleChange(e.target.value)}
-            placeholder="Add task"
-            className="w-full bg-transparent text-sm text-gray-600 dark:text-gray-400 placeholder-gray-400 outline-none"
+            placeholder="Add a task…"
+            aria-label={`Add task to ${column.name}`}
+            className="w-full bg-transparent text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 outline-none"
             onKeyDown={(e) => e.key === "Enter" && onAddTask()}
           />
         </div>

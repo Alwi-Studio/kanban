@@ -461,7 +461,7 @@ export default function BoardPage() {
           </div>
         </div>
 
-        <div className="px-4 sm:px-6 pt-4 pb-2 bg-white dark:bg-surface-dark border-b border-gray-100 dark:border-gray-700">
+        <div className="px-4 sm:px-6 pt-4 pb-3 bg-white dark:bg-surface-dark border-b border-gray-100 dark:border-gray-700 shadow-sm">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               {board.members?.slice(0, 4).map((m, i) => (
@@ -484,7 +484,7 @@ export default function BoardPage() {
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     placeholder="Search tasks..."
-                    className="pl-8 pr-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-800 text-xs outline-none focus:ring-2 focus:ring-[#6C4EF5]/20 w-44"
+                    className="pl-8 pr-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-100 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-[#6C4EF5]/20 w-48"
                     onBlur={() => { if (!search) setShowSearchInput(false); }}
                     onKeyDown={e => e.key === "Escape" && setShowSearchInput(false)}
                   />
@@ -494,15 +494,15 @@ export default function BoardPage() {
                   <Search size={14} />
                 </button>
               )}
-              <button onClick={handleShareBoard} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#6C4EF5] text-white text-xs font-medium hover:bg-[#5A3FD6] transition">
+              <button onClick={handleShareBoard} className="btn-secondary px-3 py-2 text-xs">
                 <Share2 size={12} /> Share
               </button>
               <button onClick={handleExportBoard} className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Export">
                 <Upload size={14} />
               </button>
               {canEditTasks && <div className="relative">
-                <button onClick={() => { setShowNewTask(true); setNewTaskColId(board.columns[0]?.id || ""); setNewTaskTitleInput(""); }} className="w-7 h-7 rounded-full bg-[#6C4EF5] text-white flex items-center justify-center hover:bg-[#5A3FD6] transition shadow-sm" title="New Task">
-                  <Plus size={14} />
+                <button onClick={() => { setShowNewTask(true); setNewTaskColId(board.columns[0]?.id || ""); setNewTaskTitleInput(""); }} className="btn-primary px-3 py-2 text-xs" title="New Task">
+                  <Plus size={14} /> <span className="hidden sm:inline">New task</span>
                 </button>
                 {showNewTask && (
                   <div className="absolute right-0 top-full mt-1.5 bg-white dark:bg-[#1D2939] rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg w-64 z-20 p-3 animate-scale-in">
@@ -550,8 +550,8 @@ export default function BoardPage() {
               ))}
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <button onClick={() => setShowFilters(!showFilters)} className={`p-1.5 rounded-full text-xs transition ${hasActiveFilters ? "text-[#6C4EF5] bg-[#6C4EF5]/10" : "text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`} title="Filters">
-                <Filter size={14} />
+              <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition ${hasActiveFilters ? "text-[#6C4EF5] bg-[#6C4EF5]/10" : "text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`} title="Filters">
+                <Filter size={14} /> Filters
               </button>
               <button onClick={() => setShowLog(!showLog)} className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Activity Log">
                 <List size={14} />
@@ -576,11 +576,11 @@ export default function BoardPage() {
 
           {showFilters && (
             <div className="flex items-center gap-3 mt-3 flex-wrap">
-              <select value={filterLabel} onChange={e => setFilterLabel(e.target.value)} className="rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 px-3 py-1.5 text-xs outline-none text-gray-500">
+              <select value={filterLabel} onChange={e => setFilterLabel(e.target.value)} className="rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 px-3 py-1.5 text-xs outline-none text-gray-600 dark:text-gray-200">
                 <option value="">All labels</option>
                 {board.labels?.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
-              <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)} className="rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 px-3 py-1.5 text-xs outline-none text-gray-500">
+              <select value={filterAssignee} onChange={e => setFilterAssignee(e.target.value)} className="rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 px-3 py-1.5 text-xs outline-none text-gray-600 dark:text-gray-200">
                 <option value="">All members</option>
                 {board.members?.map(m => <option key={m.userId} value={m.userId}>{m.user.name}</option>)}
               </select>
@@ -589,7 +589,7 @@ export default function BoardPage() {
           )}
         </div>
 
-        <div className="flex-1 overflow-x-auto scrollbar-thin p-4 sm:p-6">
+        <div className="flex-1 overflow-x-auto scrollbar-thin p-4 sm:p-6 bg-[radial-gradient(circle_at_top_left,rgba(108,78,245,0.04),transparent_32%)]">
           <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             <SortableContext items={board.columns.map(c => `column-${c.id}`)} strategy={horizontalListSortingStrategy}>
               <div className="flex gap-4 h-full items-start">

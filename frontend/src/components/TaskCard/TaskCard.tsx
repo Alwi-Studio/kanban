@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MessageSquare, Paperclip, Trash2 } from "lucide-react";
+import { CalendarDays, MessageSquare, Paperclip, Trash2 } from "lucide-react";
 import AvatarStack from "../ui/AvatarStack";
 import type { Task } from "../../types";
 
@@ -46,6 +46,9 @@ export default function TaskCard({ task, onDelete, onClick, isDragOverlay, disab
     transition,
     opacity: isDragging ? 0.4 : undefined,
   };
+  const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+  const isOverdue = dueDate ? dueDate.getTime() < Date.now() : false;
+  const isDueSoon = dueDate ? !isOverdue && dueDate.getTime() - Date.now() < 3 * 86400000 : false;
 
   return (
     <div
@@ -54,7 +57,10 @@ export default function TaskCard({ task, onDelete, onClick, isDragOverlay, disab
       {...attributes}
       {...listeners}
       onClick={onClick}
-      className={`group relative bg-white dark:bg-[#1D2939] rounded-2xl border border-gray-100 dark:border-gray-700 p-3.5 ${disabled ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"} transition-all duration-200 hover:shadow-md ${
+      onKeyDown={event => { if ((event.key === "Enter" || event.key === " ") && onClick) { event.preventDefault(); onClick(); } }}
+      role="button"
+      tabIndex={0}
+      className={`group relative bg-white dark:bg-[#1D2939] rounded-xl border border-gray-200/80 dark:border-gray-700 p-3.5 ${disabled ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"} transition-all duration-200 hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md focus-visible:border-brand ${
         isDragOverlay ? "shadow-xl scale-[1.02] rotate-[1deg]" : "shadow-sm"
       }`}
     >
@@ -79,11 +85,14 @@ export default function TaskCard({ task, onDelete, onClick, isDragOverlay, disab
         </div>
       )}
 
-      <p className="text-sm font-bold text-[#1A1A2E] dark:text-white leading-snug line-clamp-2 mb-1">{task.title}</p>
+      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-snug line-clamp-2 mb-1 pr-4">{task.title}</p>
 
-      <p className="text-xs text-[#8A8FA3] line-clamp-2 mb-3">
-        {task.description || "No description"}
-      </p>
+      {task.description && <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">{task.description}</p>}
+
+      {dueDate && <div className={`mb-3 inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-[10px] font-medium ${isOverdue ? "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400" : isDueSoon ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300" : "bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-300"}`}>
+        <CalendarDays size={11} />
+        {isOverdue ? "Overdue · " : ""}{dueDate.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+      </div>}
 
       <div className="flex items-center justify-between">
         <AvatarStack users={task.assignees?.map(a => a.user)} max={3} />

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, createContext, useContext } from "react";
+import { useState, useCallback, createContext, useContext, useRef } from "react";
 import { X, CheckCircle, AlertCircle, Info } from "lucide-react";
 
 type ToastType = "success" | "error" | "info";
@@ -33,10 +33,10 @@ const borderColors: Record<ToastType, string> = {
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  let nextId = 0;
+  const nextId = useRef(0);
 
   const addToast = useCallback((message: string, type: ToastType = "info") => {
-    const id = ++nextId;
+    const id = ++nextId.current;
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));

@@ -5,6 +5,7 @@ import * as taskDetailsService from "../services/taskDetails";
 import { emitBoardEvent } from "../sockets";
 import { createLog } from "../services/activityLog";
 import { createNotification } from "../services/notification";
+import { getUploadedFileUrl } from "../middlewares/upload";
 
 async function emitTaskSnapshot(taskId: string) {
   const task = await prisma.task.findUnique({
@@ -128,7 +129,7 @@ export async function addAttachment(req: Request, res: Response, next: NextFunct
   try {
     const file = req.file;
     if (!file) return res.status(400).json({ error: "No file uploaded" });
-    const fileUrl = (file as any).path?.startsWith("http") ? (file as any).path : `/uploads/${file.filename}`;
+    const fileUrl = await getUploadedFileUrl(file);
     const attachment = await taskDetailsService.addAttachment(req.params.id, fileUrl, file.originalname, file.size);
     const boardId = await taskDetailsService.getTaskBoards(req.params.id);
     if (boardId && req.user) {
