@@ -15,7 +15,7 @@ import { dashboardRouter } from "./routes/dashboard";
 import { globalBoardRouter } from "./routes/globalBoard";
 import { errorHandler } from "./middlewares/errorHandler";
 import { setupSocket } from "./sockets";
-import { UPLOAD_DIR } from "./middlewares/upload";
+import { getAttachmentStorageStatus, UPLOAD_DIR } from "./middlewares/upload";
 
 dotenv.config();
 
@@ -72,7 +72,7 @@ app.use("/api/notifications", notificationRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/global-board", globalBoardRouter);
 
-app.get("/health", (_req, res) => res.status(200).json({ status: "ok" }));
+app.get("/health", (_req, res) => res.status(200).json({ status: "ok", attachmentStorage: getAttachmentStorageStatus() }));
 
 app.use(errorHandler);
 

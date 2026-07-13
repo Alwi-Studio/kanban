@@ -16,12 +16,25 @@ function safeFileName(fileName: string) {
   return path.basename(fileName).replace(/[^a-zA-Z0-9._-]+/g, "-");
 }
 
-const usesCloudinary = Boolean(process.env.CLOUDINARY_URL);
+const explicitCloudinaryConfig = {
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+};
+const hasExplicitCloudinaryConfig = Object.values(explicitCloudinaryConfig).every(Boolean);
+const usesCloudinary = Boolean(process.env.CLOUDINARY_URL || hasExplicitCloudinaryConfig);
 
 if (usesCloudinary) {
-  // Reload configuration from CLOUDINARY_URL after dotenv has initialized.
-  cloudinary.config(true);
+  if (hasExplicitCloudinaryConfig) cloudinary.config(explicitCloudinaryConfig);
+  else cloudinary.config(true); // Reload CLOUDINARY_URL after dotenv has initialized.
   cloudinary.config({ secure: true });
+}
+
+export function getAttachmentStorageStatus() {
+  const config = cloudinary.config();
+  return usesCloudinary
+    ? { provider: "cloudinary", configured: Boolean(config.cloud_name && config.api_key && config.api_secret), cloudName: config.cloud_name || null }
+    : { provider: "local", configured: true, cloudName: null };
 }
 
 function createStorage(): multer.StorageEngine {
@@ -63,8 +76,22 @@ export async function getUploadedFileUrl(file: Express.Multer.File): Promise<str
     });
     return result.secure_url;
   } catch (error) {
-    console.error("Cloudinary attachment upload failed:", error);
-    throw new AppError(502, "Attachment storage failed. Check the Cloudinary configuration and try again.");
+    const cloudinaryError = error as UploadApiErrorResponse;
+    console.error("Cloudinary attachment upload failed:", {
+      name: cloudinaryError.name,
+      status: cloudinaryError.http_code,
+      message: cloudinaryError.message,
+    });
+    if (cloudinaryError.http_code === 401 || /invalid (api key|signature)|unknown api key/i.test(cloudinaryError.message || "")) {
+      throw new AppError(502, "Cloudinary credentials were rejected. Update the Cloudinary variables in Railway.");
+    }
+    if (cloudinaryError.http_code === 403 || /denied|blocked|untrusted|acl/i.test(cloudinaryError.message || "")) {
+      throw new AppError(502, "Cloudinary blocked this file. Check the product environment security settings.");
+    }
+    if (cloudinaryError.http_code === 400) {
+      throw new AppError(400, "Cloudinary rejected this file or upload configuration.");
+    }
+    throw new AppError(502, "Cloudinary could not be reached. Try the upload again.");
   }
 }
 
