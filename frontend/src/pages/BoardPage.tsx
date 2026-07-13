@@ -11,7 +11,7 @@ import ConfirmDialog from "../components/ui/ConfirmDialog";
 import ColumnView from "../components/Column/ColumnView";
 import TaskCard from "../components/TaskCard/TaskCard";
 import TaskModal from "../components/TaskModal/TaskModal";
-import Topbar from "../components/Layout/Topbar";
+import Layout from "../components/Layout/Layout";
 import type { Task, Column, Label, ActivityLog, BoardMember } from "../types";
 
 const tabs = [
@@ -307,8 +307,29 @@ export default function BoardPage() {
     }, `Board deleted`);
   };
 
+  const handleShareBoard = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast("Board link copied", "success");
+    } catch {
+      toast("Could not copy the board link", "error");
+    }
+  };
+
+  const handleExportBoard = () => {
+    if (!board) return;
+    const blob = new Blob([JSON.stringify(board, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${board.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "board"}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast("Board exported", "success");
+  };
+
   if (loading) return (
-    <div className="flex h-screen bg-bg-page">
+    <Layout flush><div className="flex h-full bg-bg-page dark:bg-bg-dark">
       <div className="flex-1 p-6 animate-pulse">
         <div className="h-6 w-48 bg-gray-200 dark:bg-gray-700 rounded-full mb-6" />
         <div className="flex gap-4">
@@ -320,11 +341,11 @@ export default function BoardPage() {
           ))}
         </div>
       </div>
-    </div>
+    </div></Layout>
   );
 
   if (notFound) return (
-    <div className="flex h-screen bg-bg-page items-center justify-center">
+    <Layout flush><div className="flex h-full bg-bg-page dark:bg-bg-dark items-center justify-center">
       <div className="flex flex-col items-center gap-4">
         <div className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
           <ListTodo size={28} className="text-gray-400" />
@@ -332,7 +353,7 @@ export default function BoardPage() {
         <p className="text-gray-500">Board not found</p>
         <button onClick={() => navigate("/")} className="btn-primary text-xs">Back to Dashboard</button>
       </div>
-    </div>
+    </div></Layout>
   );
 
   if (!board) return null;
@@ -340,9 +361,9 @@ export default function BoardPage() {
   const totalTasks = board.columns.reduce((s, c) => s + c.tasks.length, 0);
 
   return (
-    <div className="flex h-screen bg-bg-page">
+    <Layout flush><div className="flex h-full bg-bg-page dark:bg-bg-dark">
       <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-surface-dark">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-white dark:bg-surface-dark">
           <div className="flex items-center gap-4">
             <div>
               <div className="flex items-center gap-2">
@@ -378,12 +399,9 @@ export default function BoardPage() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Topbar />
-          </div>
         </div>
 
-        <div className="px-6 pt-4 pb-2 bg-white dark:bg-surface-dark border-b border-gray-100 dark:border-gray-700">
+        <div className="px-4 sm:px-6 pt-4 pb-2 bg-white dark:bg-surface-dark border-b border-gray-100 dark:border-gray-700">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               {board.members?.slice(0, 4).map((m, i) => (
@@ -416,10 +434,10 @@ export default function BoardPage() {
                   <Search size={14} />
                 </button>
               )}
-              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#6C4EF5] text-white text-xs font-medium hover:bg-[#5A3FD6] transition">
+              <button onClick={handleShareBoard} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#6C4EF5] text-white text-xs font-medium hover:bg-[#5A3FD6] transition">
                 <Share2 size={12} /> Share
               </button>
-              <button className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Export">
+              <button onClick={handleExportBoard} className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Export">
                 <Upload size={14} />
               </button>
               <div className="relative">
@@ -454,8 +472,8 @@ export default function BoardPage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1">
+          <div className="flex items-center justify-between gap-3 overflow-x-auto scrollbar-thin pb-1">
+            <div className="flex items-center gap-1 shrink-0">
               {tabs.map(tab => (
                 <button
                   key={tab.key}
@@ -471,7 +489,7 @@ export default function BoardPage() {
                 </button>
               ))}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <button onClick={() => setShowFilters(!showFilters)} className={`p-1.5 rounded-full text-xs transition ${hasActiveFilters ? "text-[#6C4EF5] bg-[#6C4EF5]/10" : "text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"}`} title="Filters">
                 <Filter size={14} />
               </button>
@@ -510,7 +528,7 @@ export default function BoardPage() {
           )}
         </div>
 
-        <div className="flex-1 overflow-x-auto scrollbar-thin p-6">
+        <div className="flex-1 overflow-x-auto scrollbar-thin p-4 sm:p-6">
           <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             <SortableContext items={board.columns.map(c => `column-${c.id}`)} strategy={horizontalListSortingStrategy}>
               <div className="flex gap-4 h-full items-start">
@@ -562,7 +580,7 @@ export default function BoardPage() {
       </div>
 
       {showLog && (
-        <div className="fixed right-4 top-24 bottom-4 w-80 bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl z-40 p-4 overflow-y-auto animate-slide-right">
+        <div className="fixed left-4 right-4 sm:left-auto sm:w-80 top-24 bottom-4 bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl z-40 p-4 overflow-y-auto animate-slide-right">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <List size={14} className="text-gray-400" />
@@ -581,7 +599,7 @@ export default function BoardPage() {
       )}
 
       {showMembers && (
-        <div className="fixed right-4 top-24 bottom-4 w-80 bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl z-40 p-4 overflow-y-auto animate-slide-right">
+        <div className="fixed left-4 right-4 sm:left-auto sm:w-80 top-24 bottom-4 bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl z-40 p-4 overflow-y-auto animate-slide-right">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Users size={14} className="text-gray-400" />
@@ -602,6 +620,7 @@ export default function BoardPage() {
                 <div className="flex items-center gap-1 shrink-0">
                   <select value={m.role} onChange={e => handleUpdateMemberRole(m.userId, e.target.value)} className="text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded px-1.5 py-0.5 outline-none text-gray-600 dark:text-gray-400">
                     <option value="admin">Admin</option>
+                    <option value="pm">Project Manager</option>
                     <option value="member">Member</option>
                     <option value="viewer">Viewer</option>
                   </select>
@@ -618,7 +637,7 @@ export default function BoardPage() {
       )}
 
       {showNewLabel && (
-        <div className="fixed right-4 top-24 w-80 bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl z-40 p-4 animate-slide-right">
+        <div className="fixed left-4 right-4 sm:left-auto sm:w-80 top-24 bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl z-40 p-4 animate-slide-right">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Tag size={14} className="text-gray-400" />
@@ -656,6 +675,6 @@ export default function BoardPage() {
         onConfirm={confirm?.onConfirm || (() => {})}
         onCancel={() => setConfirm(null)}
       />
-    </div>
+    </div></Layout>
   );
 }

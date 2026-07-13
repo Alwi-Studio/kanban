@@ -26,17 +26,20 @@ const assigneeSchema = z.object({
   user_id: z.string().uuid(),
 });
 
-taskRouter.patch("/:id", authenticate, requireRole("admin", "owner", "member")("task"), validate(updateTaskSchema), taskController.updateTask);
-taskRouter.delete("/:id", authenticate, requireRole("admin", "owner", "member")("task"), taskController.deleteTask);
+const canViewTask = requireRole("admin", "owner", "pm", "member", "viewer")("task");
+const canEditTask = requireRole("admin", "owner", "pm", "member")("task");
 
-taskRouter.post("/:id/assignees", authenticate, validate(assigneeSchema), taskController.addAssignee);
-taskRouter.delete("/:id/assignees/:userId", authenticate, taskController.removeAssignee);
+taskRouter.patch("/:id", authenticate, canEditTask, validate(updateTaskSchema), taskController.updateTask);
+taskRouter.delete("/:id", authenticate, canEditTask, taskController.deleteTask);
 
-taskRouter.get("/:id/comments", authenticate, taskController.getComments);
-taskRouter.post("/:id/comments", authenticate, taskController.addComment);
+taskRouter.post("/:id/assignees", authenticate, canEditTask, validate(assigneeSchema), taskController.addAssignee);
+taskRouter.delete("/:id/assignees/:userId", authenticate, canEditTask, taskController.removeAssignee);
 
-taskRouter.get("/:id/attachments", authenticate, taskController.getAttachments);
-taskRouter.post("/:id/attachments", authenticate, upload.single("file"), taskController.addAttachment);
+taskRouter.get("/:id/comments", authenticate, canViewTask, taskController.getComments);
+taskRouter.post("/:id/comments", authenticate, canEditTask, taskController.addComment);
 
-taskRouter.post("/:id/labels/:labelId", authenticate, taskController.addLabelToTask);
-taskRouter.delete("/:id/labels/:labelId", authenticate, taskController.removeLabelFromTask);
+taskRouter.get("/:id/attachments", authenticate, canViewTask, taskController.getAttachments);
+taskRouter.post("/:id/attachments", authenticate, canEditTask, upload.single("file"), taskController.addAttachment);
+
+taskRouter.post("/:id/labels/:labelId", authenticate, canEditTask, taskController.addLabelToTask);
+taskRouter.delete("/:id/labels/:labelId", authenticate, canEditTask, taskController.removeLabelFromTask);

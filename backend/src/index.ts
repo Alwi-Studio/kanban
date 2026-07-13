@@ -12,6 +12,7 @@ import { workspaceRouter } from "./routes/workspaces";
 import { memberRouter } from "./routes/members";
 import { notificationRouter } from "./routes/notifications";
 import { dashboardRouter } from "./routes/dashboard";
+import { globalBoardRouter } from "./routes/globalBoard";
 import { errorHandler } from "./middlewares/errorHandler";
 import { setupSocket } from "./sockets";
 
@@ -68,6 +69,7 @@ app.use("/api/tasks", taskRouter);
 app.use("/api", memberRouter);
 app.use("/api/notifications", notificationRouter);
 app.use("/api/dashboard", dashboardRouter);
+app.use("/api/global-board", globalBoardRouter);
 
 app.get("/health", (_req, res) => res.status(200).json({ status: "ok" }));
 

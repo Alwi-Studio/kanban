@@ -10,10 +10,14 @@ import { emitBoardEvent } from "../sockets";
 
 export const memberRouter = Router();
 
+const memberRoleSchema = z.enum(["admin", "pm", "member", "viewer"]);
+
 const addMemberSchema = z.object({
   email: z.string().email(),
-  role: z.string().default("member"),
+  role: memberRoleSchema.default("member"),
 });
+
+const updateMemberSchema = z.object({ role: memberRoleSchema });
 
 memberRouter.post("/boards/:id/members", authenticate, requireRole("admin", "owner")(), validate(addMemberSchema), async (req, res, next) => {
   try {
@@ -26,7 +30,7 @@ memberRouter.post("/boards/:id/members", authenticate, requireRole("admin", "own
   } catch (err) { next(err); }
 });
 
-memberRouter.patch("/boards/:id/members/:userId", authenticate, requireRole("admin", "owner")(), async (req, res, next) => {
+memberRouter.patch("/boards/:id/members/:userId", authenticate, requireRole("admin", "owner")(), validate(updateMemberSchema), async (req, res, next) => {
   try {
     const { role } = req.body;
     const member = await updateMemberRole(req.params.id, req.params.userId, role);

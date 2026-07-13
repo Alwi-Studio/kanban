@@ -141,3 +141,11 @@ export interface DashboardStats {
   }[];
   taskTrends: { date: string; completed: number; created: number }[];
 }
+
+export interface GlobalBoard extends Board {
+  workspaceName: string;
+}
+
+export interface GlobalBoardResponse {
+  boards: GlobalBoard[];
+}

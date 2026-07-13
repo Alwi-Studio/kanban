@@ -48,6 +48,10 @@ export default function Topbar() {
     } catch {}
   };
 
+  useEffect(() => {
+    loadNotifs();
+  }, []);
+
   return (
     <div className="flex items-center gap-2">
       <button onClick={() => setDark(!dark)} className="p-2 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">

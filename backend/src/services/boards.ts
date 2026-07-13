@@ -1,9 +1,9 @@
 import prisma from "../lib/prisma";
 
 
-export async function listBoards(workspaceId: string) {
+export async function listBoards(workspaceId: string, userId: string) {
   return prisma.board.findMany({
-    where: { workspaceId },
+    where: { workspaceId, members: { some: { userId } } },
     include: {
       columns: {
         orderBy: { position: "asc" },
@@ -26,9 +26,9 @@ export async function listBoards(workspaceId: string) {
   });
 }
 
-export async function getBoard(id: string) {
-  return prisma.board.findUnique({
-    where: { id },
+export async function getBoard(id: string, userId: string) {
+  return prisma.board.findFirst({
+    where: { id, members: { some: { userId } } },
     include: {
       columns: {
         orderBy: { position: "asc" },

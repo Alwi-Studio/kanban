@@ -18,6 +18,10 @@ export async function updateMemberRole(boardId: string, userId: string, role: st
     where: { boardId, userId },
   });
   if (!member) throw new AppError(404, "Member not found");
+  if (member.role === "admin" && role !== "admin") {
+    const adminCount = await prisma.boardMember.count({ where: { boardId, role: "admin" } });
+    if (adminCount <= 1) throw new AppError(409, "A board must have at least one admin");
+  }
   return prisma.boardMember.update({
     where: { id: member.id },
     data: { role },
@@ -30,6 +34,10 @@ export async function removeMember(boardId: string, userId: string) {
     where: { boardId, userId },
   });
   if (!member) throw new AppError(404, "Member not found");
+  if (member.role === "admin") {
+    const adminCount = await prisma.boardMember.count({ where: { boardId, role: "admin" } });
+    if (adminCount <= 1) throw new AppError(409, "A board must have at least one admin");
+  }
   await prisma.boardMember.delete({ where: { id: member.id } });
 }
 

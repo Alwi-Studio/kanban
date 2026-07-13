@@ -28,7 +28,7 @@ boardRouter.delete("/:id", authenticate, requireRole("admin", "owner")(), boardC
 
 boardRouter.post("/:id/columns", authenticate, requireRole("admin", "owner")(), columnController.createColumn);
 
-boardRouter.get("/:id/labels", authenticate, async (req, res, next) => {
+boardRouter.get("/:id/labels", authenticate, requireRole("admin", "owner", "pm", "member", "viewer")(), async (req, res, next) => {
   try {
     const labels = await prisma.label.findMany({ where: { boardId: req.params.id } });
     res.json(labels);
@@ -55,7 +55,7 @@ boardRouter.delete("/:id/labels/:labelId", authenticate, requireRole("admin", "o
   } catch (err) { next(err); }
 });
 
-boardRouter.get("/:id/activity", authenticate, async (req, res, next) => {
+boardRouter.get("/:id/activity", authenticate, requireRole("admin", "owner", "pm", "member", "viewer")(), async (req, res, next) => {
   try {
     const logs = await prisma.activityLog.findMany({
       where: { boardId: req.params.id },

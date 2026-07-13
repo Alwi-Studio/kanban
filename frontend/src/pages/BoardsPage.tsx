@@ -5,26 +5,35 @@ import { getWorkspaces, createBoard } from "../services/board";
 import { useToast } from "../components/ui/Toast";
 import Layout from "../components/Layout/Layout";
 import type { Workspace } from "../types";
+import { useAuthStore } from "../store/authStore";
 
 export default function BoardsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const user = useAuthStore(s => s.user);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewBoard, setShowNewBoard] = useState(false);
   const [newBoardName, setNewBoardName] = useState("");
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
+    setLoadError(false);
     getWorkspaces()
-      .then(setWorkspaces)
-      .catch(() => {})
+      .then(data => {
+        setWorkspaces(data);
+        const firstOwned = data.find(ws => ws.ownerId === user?.id);
+        setSelectedWorkspaceId(firstOwned?.id || "");
+      })
+      .catch(() => setLoadError(true))
       .finally(() => setLoading(false));
-  }, []);
+  }, [user?.id]);
 
   const handleCreateBoard = async () => {
-    if (!newBoardName.trim() || workspaces.length === 0) return;
+    if (!newBoardName.trim() || !selectedWorkspaceId) return;
     try {
-      const board = await createBoard(workspaces[0].id, newBoardName);
+      const board = await createBoard(selectedWorkspaceId, newBoardName.trim());
       setShowNewBoard(false);
       setNewBoardName("");
       toast(`Board "${board.name}" created`, "success");
@@ -34,7 +43,7 @@ export default function BoardsPage() {
     }
   };
 
-  const allBoards = workspaces.flatMap(ws => ws.boards || []);
+  const ownedWorkspaces = workspaces.filter(ws => ws.ownerId === user?.id);
 
   if (loading) {
     return (
@@ -63,18 +72,21 @@ export default function BoardsPage() {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Boards</h1>
             <p className="text-sm text-gray-500 mt-1">All your project boards in one place</p>
           </div>
-          <button onClick={() => setShowNewBoard(true)} className="btn-primary flex items-center gap-1.5">
+          <button disabled={ownedWorkspaces.length === 0} onClick={() => setShowNewBoard(true)} className="btn-primary flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed shrink-0">
             <Plus size={16} /> New Board
           </button>
         </div>
 
         {showNewBoard && (
-          <div className="card p-4 flex items-center gap-3">
+          <div className="card p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <select value={selectedWorkspaceId} onChange={e => setSelectedWorkspaceId(e.target.value)} className="input sm:max-w-56" aria-label="Workspace">
+              {ownedWorkspaces.map(ws => <option key={ws.id} value={ws.id}>{ws.name}</option>)}
+            </select>
             <input
               value={newBoardName}
               onChange={e => setNewBoardName(e.target.value)}
@@ -88,7 +100,14 @@ export default function BoardsPage() {
           </div>
         )}
 
-        {workspaces.length === 0 && (
+        {loadError && (
+          <div className="card p-8 text-center border-red-200 dark:border-red-900">
+            <p className="text-sm text-red-600 dark:text-red-400">Could not load your boards.</p>
+            <button onClick={() => window.location.reload()} className="btn-secondary text-xs mt-3">Try again</button>
+          </div>
+        )}
+
+        {!loadError && workspaces.length === 0 && (
           <div className="card p-12 text-center">
             <Columns3 size={40} className="mx-auto text-gray-300 dark:text-gray-600 mb-3" />
             <p className="text-gray-500 dark:text-gray-400 text-sm">No workspaces yet. Create your first board!</p>
@@ -99,6 +118,7 @@ export default function BoardsPage() {
           <div key={ws.id}>
             <div className="flex items-center gap-2 mb-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{ws.name}</h2>
+              {ws.ownerId !== user?.id && <span className="text-[10px] font-medium text-brand bg-brand/10 px-2 py-0.5 rounded-full">Shared</span>}
               <span className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
                 {ws.boards?.length || 0} boards
               </span>
@@ -125,7 +145,7 @@ export default function BoardsPage() {
             ) : (
               <div className="card p-8 text-center">
                 <p className="text-gray-400 text-sm">No boards yet in this workspace.</p>
-                <button onClick={() => setShowNewBoard(true)} className="btn-primary text-xs mt-3">Create your first board</button>
+                {ws.ownerId === user?.id && <button onClick={() => { setSelectedWorkspaceId(ws.id); setShowNewBoard(true); }} className="btn-primary text-xs mt-3">Create your first board</button>}
               </div>
             )}
           </div>

@@ -1,9 +1,9 @@
 import api from "./api";
-import type { Board, Column, Task, Comment, Attachment, Label, ActivityLog, Notification, NotificationsResponse, DashboardStats } from "../types";
+import type { Board, Column, Task, Comment, Attachment, Label, ActivityLog, NotificationsResponse, DashboardStats, GlobalBoardResponse, Workspace } from "../types";
 
 export async function getWorkspaces() {
   const { data } = await api.get("/workspaces");
-  return data;
+  return data as Workspace[];
 }
 
 export async function getBoards(workspaceId: string) {
@@ -156,4 +156,9 @@ export async function markAllNotificationsRead() {
 export async function getDashboardStats() {
   const { data } = await api.get("/dashboard/stats");
   return data as DashboardStats;
+}
+
+export async function getGlobalBoard() {
+  const { data } = await api.get("/global-board");
+  return data as GlobalBoardResponse;
 }

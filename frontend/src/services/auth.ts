@@ -1,6 +1,7 @@
 import axios from "axios";
 import api, { API_BASE, setAccessToken } from "./api";
 import { useAuthStore } from "../store/authStore";
+import { disconnectSocket } from "./socket";
 
 const API_URL = `${API_BASE}/api`;
 
@@ -26,7 +27,11 @@ export async function refreshToken() {
 }
 
 export async function logout() {
-  await api.post("/auth/logout");
-  setAccessToken(null);
-  useAuthStore.getState().setUser(null);
+  try {
+    await api.post("/auth/logout");
+  } finally {
+    disconnectSocket();
+    setAccessToken(null);
+    useAuthStore.getState().setUser(null);
+  }
 }

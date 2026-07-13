@@ -1,5 +1,5 @@
 import { io, Socket } from "socket.io-client";
-import { API_BASE } from "./api";
+import { API_BASE, getAccessToken } from "./api";
 
 let socket: Socket | null = null;
 
@@ -7,6 +7,7 @@ export function connectSocket() {
   if (socket?.connected) return socket;
   socket = io(API_BASE, {
     transports: ["websocket", "polling"],
+    auth: { token: getAccessToken() },
   });
   return socket;
 }

@@ -17,4 +17,4 @@ columnRouter.patch("/:id", authenticate, requireRole("admin", "owner")("column")
 columnRouter.delete("/:id", authenticate, requireRole("admin", "owner")("column"), columnController.deleteColumn);
 
 // Tasks nested under columns
-columnRouter.post("/:id/tasks", authenticate, requireRole("admin", "owner", "member")("column"), taskController.createTask);
+columnRouter.post("/:id/tasks", authenticate, requireRole("admin", "owner", "pm", "member")("column"), taskController.createTask);
