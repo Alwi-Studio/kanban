@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable";
-import { Plus, Filter, List, ListTodo, X, Users, Tag, Share2, Search, Upload, ArrowUpDown, Eye, MessageSquare, Zap, Globe, ArrowRightLeft } from "lucide-react";
+import { Plus, Filter, List, ListTodo, X, Users, Tag, Share2, Search, Upload, ArrowUpDown, Eye, MessageSquare, Zap, Globe } from "lucide-react";
 import { useBoardStore } from "../store/boardStore";
 import { getBoard, createColumn, deleteColumn, updateColumn, updateTask, createTask, deleteTask, createLabel, deleteLabel, getActivityLogs, inviteMember, updateMemberRole, removeMember, updateBoard, deleteBoard, getAutomationRules, createAutomationRule, updateAutomationRule, deleteAutomationRule, getTransferTargets, transferBoard } from "../services/board";
 import { connectSocket, joinBoard, leaveBoard } from "../services/socket";
@@ -13,7 +13,7 @@ import TaskCard from "../components/TaskCard/TaskCard";
 import TaskModal from "../components/TaskModal/TaskModal";
 import RoleBadge from "../components/ui/RoleBadge";
 import Layout from "../components/Layout/Layout";
-import type { Task, Column, Label, ActivityLog, BoardMember, AutomationRule, TransferTarget } from "../types";
+import type { Task, Column, Label, ActivityLog, BoardMember, AutomationRule } from "../types";
 import { useAuthStore } from "../store/authStore";
 
 const tabs = [
@@ -68,8 +68,6 @@ export default function BoardPage() {
   const [showLog, setShowLog] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
-  const [transferTargets, setTransferTargets] = useState<TransferTarget[]>([]);
-  const [transferTo, setTransferTo] = useState("");
   const [showSearchInput, setShowSearchInput] = useState(false);
 
   const [editingBoard, setEditingBoard] = useState(false);
@@ -246,12 +244,6 @@ export default function BoardPage() {
 
   useEffect(() => { if (showLog) loadLogs(); }, [showLog, loadLogs]);
 
-  useEffect(() => {
-    if (showMembers && user?.isGlobalAdmin && id) {
-      getTransferTargets(id).then(setTransferTargets).catch(() => setTransferTargets([]));
-    }
-  }, [showMembers, user?.isGlobalAdmin, id]);
-
   const confirmThen = (title: string, message: string, action: () => Promise<void>, successMsg: string) => {
     setConfirm({
       title, message, variant: "danger",
@@ -369,22 +361,6 @@ export default function BoardPage() {
 
   const handleRemoveMember = (userId: string, userName: string) => {
     confirmThen("Remove member", `Remove "${userName}"?`, () => removeMember(id!, userId), `Member removed`);
-  };
-
-  const handleTransferBoard = () => {
-    const target = transferTargets.find(t => t.workspaceId === transferTo);
-    if (!target || !id) return;
-    confirmThen(
-      "Reassign board",
-      `Move "${board?.name}" to ${target.ownerName}'s workspace "${target.name}"? They become a board admin.`,
-      async () => {
-        await transferBoard(id, target.workspaceId);
-        setTransferTo("");
-        setShowMembers(false);
-        navigate("/boards");
-      },
-      "Board reassigned",
-    );
   };
 
   const handleSaveBoardName = async () => {
@@ -783,23 +759,6 @@ export default function BoardPage() {
             <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="Email..." className="input flex-1 text-sm" onKeyDown={e => e.key === 'Enter' && handleInvite()} />
             <button onClick={handleInvite} className="btn-primary text-xs">Invite</button>
           </div>}
-
-          {user?.isGlobalAdmin && (
-            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-              <div className="flex items-center gap-2 mb-1.5">
-                <ArrowRightLeft size={13} className="text-gray-400" />
-                <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-200">Reassign board</h4>
-              </div>
-              <p className="text-[11px] text-gray-400 mb-2">Move this board to another user's workspace. They become a board admin.</p>
-              <div className="flex gap-2">
-                <select value={transferTo} onChange={e => setTransferTo(e.target.value)} aria-label="Destination workspace" className="input flex-1 text-sm">
-                  <option value="">Select workspace…</option>
-                  {transferTargets.map(t => <option key={t.workspaceId} value={t.workspaceId}>{t.name} · {t.ownerName}</option>)}
-                </select>
-                <button onClick={handleTransferBoard} disabled={!transferTo} className="btn-secondary text-xs disabled:opacity-50 disabled:cursor-not-allowed">Reassign</button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 

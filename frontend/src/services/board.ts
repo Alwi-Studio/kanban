@@ -1,5 +1,5 @@
 import api from "./api";
-import type { Board, Column, Task, Comment, Attachment, Label, ActivityLog, NotificationsResponse, DashboardStats, GlobalBoardResponse, Workspace, AutomationRule } from "../types";
+import type { Board, Column, Task, Comment, Attachment, Label, ActivityLog, NotificationsResponse, DashboardStats, GlobalBoardResponse, Workspace, AutomationRule, TransferTarget } from "../types";
 
 export async function getWorkspaces() {
   const { data } = await api.get("/workspaces");
@@ -28,6 +28,16 @@ export async function updateBoard(id: string, updates: { name?: string; isGlobal
 
 export async function deleteBoard(id: string) {
   await api.delete(`/boards/${id}`);
+}
+
+export async function getTransferTargets(boardId: string) {
+  const { data } = await api.get(`/boards/${boardId}/transfer-targets`);
+  return data as TransferTarget[];
+}
+
+export async function transferBoard(boardId: string, workspaceId: string) {
+  const { data } = await api.post(`/boards/${boardId}/transfer`, { workspaceId });
+  return data as Board;
 }
 
 export async function createColumn(boardId: string, name: string) {

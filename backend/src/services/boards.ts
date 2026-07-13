@@ -1,4 +1,5 @@
 import prisma from "../lib/prisma";
+import { AppError } from "../middlewares/errorHandler";
 
 
 export async function listBoards(workspaceId: string, userId: string) {
@@ -89,6 +90,39 @@ export async function updateBoard(id: string, data: { name?: string; isGlobal?: 
       ...(data.isGlobal !== undefined ? { isGlobal: data.isGlobal } : {}),
     },
   });
+}
+
+// Workspaces a board can be reassigned to (every workspace except its current one).
+export async function getTransferTargets(boardId: string) {
+  const board = await prisma.board.findUnique({ where: { id: boardId }, select: { workspaceId: true } });
+  if (!board) throw new AppError(404, "Board not found");
+  const workspaces = await prisma.workspace.findMany({
+    where: { id: { not: board.workspaceId } },
+    select: { id: true, name: true, owner: { select: { name: true, email: true } } },
+    orderBy: { name: "asc" },
+  });
+  return workspaces.map(w => ({ workspaceId: w.id, name: w.name, ownerName: w.owner.name, ownerEmail: w.owner.email }));
+}
+
+// Move a board to another workspace and guarantee the new workspace owner can manage it.
+export async function transferBoard(boardId: string, targetWorkspaceId: string) {
+  const board = await prisma.board.findUnique({ where: { id: boardId }, select: { id: true, workspaceId: true } });
+  if (!board) throw new AppError(404, "Board not found");
+  if (board.workspaceId === targetWorkspaceId) throw new AppError(400, "Board is already in that workspace");
+
+  const workspace = await prisma.workspace.findUnique({ where: { id: targetWorkspaceId }, select: { id: true, ownerId: true } });
+  if (!workspace) throw new AppError(404, "Target workspace not found");
+
+  await prisma.board.update({ where: { id: boardId }, data: { workspaceId: targetWorkspaceId } });
+
+  const existing = await prisma.boardMember.findFirst({ where: { boardId, userId: workspace.ownerId } });
+  if (existing) {
+    if (existing.role !== "admin") await prisma.boardMember.update({ where: { id: existing.id }, data: { role: "admin" } });
+  } else {
+    await prisma.boardMember.create({ data: { boardId, userId: workspace.ownerId, role: "admin" } });
+  }
+
+  return prisma.board.findUnique({ where: { id: boardId } });
 }
 
 export async function deleteBoard(id: string) {

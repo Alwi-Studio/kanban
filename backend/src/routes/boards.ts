@@ -6,8 +6,11 @@ import * as columnController from "../controllers/columns";
 import { authenticate } from "../middlewares/auth";
 import { validate } from "../middlewares/validate";
 import { requireRole } from "../middlewares/role";
+import { requireGlobalAdmin } from "../middlewares/adminOnly";
 import { emitBoardEvent } from "../sockets";
 import { AppError } from "../middlewares/errorHandler";
+import { createLog } from "../services/activityLog";
+import * as boardService from "../services/boards";
 import * as automationService from "../services/automation";
 
 
@@ -42,6 +45,22 @@ boardRouter.post("/", authenticate, validate(createBoardSchema), boardController
 boardRouter.get("/:id", authenticate, boardController.getBoard);
 boardRouter.patch("/:id", authenticate, requireRole("admin", "owner")(), validate(updateBoardSchema), boardController.updateBoard);
 boardRouter.delete("/:id", authenticate, requireRole("admin", "owner")(), boardController.deleteBoard);
+
+const transferSchema = z.object({ workspaceId: z.string().uuid() });
+
+boardRouter.get("/:id/transfer-targets", authenticate, requireGlobalAdmin, async (req, res, next) => {
+  try {
+    res.json(await boardService.getTransferTargets(req.params.id));
+  } catch (err) { next(err); }
+});
+
+boardRouter.post("/:id/transfer", authenticate, requireGlobalAdmin, validate(transferSchema), async (req, res, next) => {
+  try {
+    const board = await boardService.transferBoard(req.params.id, req.body.workspaceId);
+    if (req.user) await createLog(req.params.id, req.user.userId, "Reassigned board to another workspace");
+    res.json(board);
+  } catch (err) { next(err); }
+});
 
 boardRouter.post("/:id/columns", authenticate, requireRole("admin", "owner")(), validate(createColumnSchema), columnController.createColumn);
 

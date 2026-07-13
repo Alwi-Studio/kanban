@@ -159,6 +159,13 @@ export interface GlobalBoardResponse {
   isGlobalAdmin: boolean;
 }
 
+export interface TransferTarget {
+  workspaceId: string;
+  name: string;
+  ownerName: string;
+  ownerEmail: string;
+}
+
 export interface AdminUserMembership {
   boardId: string;
   boardName: string;
