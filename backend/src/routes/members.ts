@@ -13,7 +13,7 @@ export const memberRouter = Router();
 const memberRoleSchema = z.enum(["admin", "pm", "member", "viewer"]);
 
 const addMemberSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().email().transform(value => value.toLowerCase()),
   role: memberRoleSchema.default("member"),
 });
 
@@ -21,7 +21,7 @@ const updateMemberSchema = z.object({ role: memberRoleSchema });
 
 memberRouter.post("/boards/:id/members", authenticate, requireRole("admin", "owner")(), validate(addMemberSchema), async (req, res, next) => {
   try {
-    const user = await prisma.user.findUnique({ where: { email: req.body.email } });
+    const user = await prisma.user.findFirst({ where: { email: { equals: req.body.email, mode: "insensitive" } } });
     if (!user) return res.status(404).json({ error: "User not found" });
     const member = await addMember(req.params.id, user.id, req.body.role);
     if (req.user) await createLog(req.params.id, req.user.userId, `Added member ${user.name}`);

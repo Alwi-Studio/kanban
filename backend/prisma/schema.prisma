@@ -57,6 +57,7 @@ model BoardMember {
   board Board @relation(fields: [boardId], references: [id])
   user  User  @relation(fields: [userId], references: [id])
 
+  @@unique([boardId, userId])
   @@map("board_members")
 }
 
@@ -68,6 +69,7 @@ model Column {
   board    Board  @relation(fields: [boardId], references: [id])
   tasks    Task[]
 
+  @@index([boardId, position])
   @@map("columns")
 }
 
@@ -86,6 +88,7 @@ model Task {
   attachments Attachment[]
   taskLabels  TaskLabel[]
 
+  @@index([columnId, position])
   @@map("tasks")
 }
 
@@ -96,6 +99,7 @@ model TaskAssignee {
   task   Task   @relation(fields: [taskId], references: [id])
   user   User   @relation(fields: [userId], references: [id])
 
+  @@unique([taskId, userId])
   @@map("task_assignees")
 }
 
@@ -166,5 +170,6 @@ model Notification {
   createdAt DateTime @default(now()) @map("created_at")
   user      User     @relation(fields: [userId], references: [id])
 
+  @@index([userId, isRead, createdAt])
   @@map("notifications")
 }

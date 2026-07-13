@@ -14,7 +14,7 @@ function generateRefreshToken(payload: { userId: string; email: string }) {
 }
 
 export async function register(name: string, email: string, password: string) {
-  const existing = await prisma.user.findUnique({ where: { email } });
+  const existing = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } });
   if (existing) {
     throw new (require("../middlewares/errorHandler").AppError)(409, "Email already registered");
   }
@@ -59,7 +59,7 @@ export async function register(name: string, email: string, password: string) {
   const refreshToken = generateRefreshToken(payload);
 
   return {
-    user: { id: user.id, name: user.name, email: user.email },
+    user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt },
     accessToken,
     refreshToken,
     workspace,
@@ -67,7 +67,7 @@ export async function register(name: string, email: string, password: string) {
 }
 
 export async function login(email: string, password: string) {
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } });
   if (!user) {
     throw new (require("../middlewares/errorHandler").AppError)(401, "Invalid email or password");
   }
@@ -82,7 +82,7 @@ export async function login(email: string, password: string) {
   const refreshToken = generateRefreshToken(payload);
 
   return {
-    user: { id: user.id, name: user.name, email: user.email },
+    user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt },
     accessToken,
     refreshToken,
   };

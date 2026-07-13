@@ -94,6 +94,7 @@ export async function deleteBoard(id: string) {
   await del("task", { column: { boardId: id } });
   await del("label", { boardId: id });
   await del("activityLog", { boardId: id });
+  await del("notification", { boardId: id });
   await del("boardMember", { boardId: id });
   await del("column", { boardId: id });
   await prisma.board.delete({ where: { id } });

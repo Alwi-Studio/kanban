@@ -92,9 +92,7 @@ export async function getAttachments(taskId: string) {
 export async function uploadAttachment(taskId: string, file: File) {
   const formData = new FormData();
   formData.append("file", file);
-  const { data } = await api.post(`/tasks/${taskId}/attachments`, formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const { data } = await api.post(`/tasks/${taskId}/attachments`, formData);
   return data as Attachment;
 }
 

@@ -6,6 +6,20 @@ import { emitBoardEvent } from "../sockets";
 import { createLog } from "../services/activityLog";
 import { createNotification } from "../services/notification";
 
+async function emitTaskSnapshot(taskId: string) {
+  const task = await prisma.task.findUnique({
+    where: { id: taskId },
+    include: {
+      column: { select: { boardId: true } },
+      assignees: { include: { user: { select: { id: true, name: true, email: true } } } },
+      taskLabels: { include: { label: true } },
+      _count: { select: { comments: true, attachments: true } },
+    },
+  });
+  if (!task) return;
+  const { column, ...payload } = task;
+  emitBoardEvent(column.boardId, "task:updated", payload);
+}
 
 export async function createTask(req: Request, res: Response, next: NextFunction) {
   try {
@@ -41,6 +55,7 @@ export async function updateTask(req: Request, res: Response, next: NextFunction
       }
     }
     if (col) emitBoardEvent(col.boardId, "task:updated", task);
+    if (column_id || position !== undefined) emitBoardEvent(col!.boardId, "board:refresh", { boardId: col!.boardId });
     res.json(task);
   } catch (err) { next(err); }
 }
@@ -68,6 +83,7 @@ export async function addAssignee(req: Request, res: Response, next: NextFunctio
     }
     const boardId = await taskDetailsService.getTaskBoards(req.params.id);
     if (boardId) emitBoardEvent(boardId, "task:assignee:added", assignee);
+    await emitTaskSnapshot(req.params.id);
     res.status(201).json(assignee);
   } catch (err) { next(err); }
 }
@@ -77,6 +93,7 @@ export async function removeAssignee(req: Request, res: Response, next: NextFunc
     await taskDetailsService.removeAssignee(req.params.id, req.params.userId);
     const boardId = await taskDetailsService.getTaskBoards(req.params.id);
     if (boardId) emitBoardEvent(boardId, "task:assignee:removed", { taskId: req.params.id, userId: req.params.userId });
+    await emitTaskSnapshot(req.params.id);
     res.json({ message: "ok" });
   } catch (err) { next(err); }
 }
@@ -95,6 +112,7 @@ export async function addComment(req: Request, res: Response, next: NextFunction
     }
     const boardId = await taskDetailsService.getTaskBoards(req.params.id);
     if (boardId) emitBoardEvent(boardId, "task:comment:added", comment);
+    await emitTaskSnapshot(req.params.id);
     res.status(201).json(comment);
   } catch (err) { next(err); }
 }
@@ -118,6 +136,7 @@ export async function addAttachment(req: Request, res: Response, next: NextFunct
       await createLog(boardId, req.user.userId, `Attached "${file.originalname}" to task "${task?.title}"`);
     }
     if (boardId) emitBoardEvent(boardId, "task:attachment:added", attachment);
+    await emitTaskSnapshot(req.params.id);
     res.status(201).json(attachment);
   } catch (err) { next(err); }
 }
@@ -134,6 +153,7 @@ export async function addLabelToTask(req: Request, res: Response, next: NextFunc
     const tl = await taskDetailsService.addLabelToTask(req.params.id, req.params.labelId);
     const boardId = await taskDetailsService.getTaskBoards(req.params.id);
     if (boardId) emitBoardEvent(boardId, "task:label:added", tl);
+    await emitTaskSnapshot(req.params.id);
     res.status(201).json(tl);
   } catch (err) { next(err); }
 }
@@ -143,6 +163,7 @@ export async function removeLabelFromTask(req: Request, res: Response, next: Nex
     await taskDetailsService.removeLabelFromTask(req.params.id, req.params.labelId);
     const boardId = await taskDetailsService.getTaskBoards(req.params.id);
     if (boardId) emitBoardEvent(boardId, "task:label:removed", { taskId: req.params.id, labelId: req.params.labelId });
+    await emitTaskSnapshot(req.params.id);
     res.json({ message: "Label removed" });
   } catch (err) { next(err); }
 }

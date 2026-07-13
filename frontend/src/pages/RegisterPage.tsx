@@ -8,18 +8,22 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
   const setUser = useAuthStore((s) => s.setUser);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSubmitting(true);
     try {
       const res = await register(name, email, password);
       setUser(res.user);
       navigate("/");
     } catch (err: any) {
       setError(err.response?.data?.error || "Registration failed");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -59,8 +63,8 @@ export default function RegisterPage() {
             minLength={6}
           />
         </div>
-        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
-          Register
+        <button type="submit" disabled={submitting} className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50">
+          {submitting ? "Creating account..." : "Register"}
         </button>
         <p className="text-sm text-center mt-4">
           Already have an account? <Link to="/login" className="text-blue-600">Sign In</Link>

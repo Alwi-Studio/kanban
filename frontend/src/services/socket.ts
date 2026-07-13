@@ -4,7 +4,7 @@ import { API_BASE, getAccessToken } from "./api";
 let socket: Socket | null = null;
 
 export function connectSocket() {
-  if (socket?.connected) return socket;
+  if (socket) return socket;
   socket = io(API_BASE, {
     transports: ["websocket", "polling"],
     auth: { token: getAccessToken() },

@@ -5,10 +5,13 @@ import { useAuthStore } from "../../store/authStore";
 import { logout } from "../../services/auth";
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from "../../services/board";
 import type { Notification } from "../../types";
+import { connectSocket } from "../../services/socket";
+import { useToast } from "../ui/Toast";
 
 export default function Topbar() {
   const { user, setUser } = useAuthStore();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [dark, setDark] = useState(() => {
     const stored = localStorage.getItem("darkMode");
     return stored === "true" || (stored === null && document.documentElement.classList.contains("dark"));
@@ -23,6 +26,12 @@ export default function Topbar() {
     else document.documentElement.classList.remove("dark");
     localStorage.setItem("darkMode", String(dark));
   }, [dark]);
+
+  useEffect(() => {
+    const syncDarkMode = (event: Event) => setDark((event as CustomEvent<boolean>).detail);
+    window.addEventListener("dark-mode-change", syncDarkMode);
+    return () => window.removeEventListener("dark-mode-change", syncDarkMode);
+  }, []);
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
@@ -52,6 +61,32 @@ export default function Topbar() {
     loadNotifs();
   }, []);
 
+  useEffect(() => {
+    const socket = connectSocket();
+    const onNotification = (notification: Notification) => {
+      setNotifs(current => [notification, ...current.filter(item => item.id !== notification.id)]);
+      setUnread(current => current + 1);
+    };
+    socket.on("notification:new", onNotification);
+    return () => { socket.off("notification:new", onNotification); };
+  }, []);
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsRead();
+      setUnread(0);
+      setNotifs(current => current.map(item => ({ ...item, isRead: true })));
+    } catch { toast("Failed to update notifications", "error"); }
+  };
+
+  const handleMarkRead = async (notificationId: string) => {
+    try {
+      await markNotificationRead(notificationId);
+      setUnread(current => Math.max(0, current - 1));
+      setNotifs(current => current.map(item => item.id === notificationId ? { ...item, isRead: true } : item));
+    } catch { toast("Failed to update notification", "error"); }
+  };
+
   return (
     <div className="flex items-center gap-2">
       <button onClick={() => setDark(!dark)} className="p-2 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
@@ -67,7 +102,7 @@ export default function Topbar() {
           <div className="notif-panel absolute top-full right-0 mt-2 bg-white dark:bg-[#1D2939] rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg w-72 z-50 max-h-72 overflow-y-auto">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
               <span className="text-xs font-semibold text-[#1A1A2E] dark:text-white">Notifications</span>
-              {unread > 0 && <button onClick={() => { markAllNotificationsRead(); setUnread(0); setNotifs(n => n.map(x => ({ ...x, isRead: true }))); }} className="text-[#6C4EF5] text-[10px] font-medium">Mark all read</button>}
+              {unread > 0 && <button onClick={handleMarkAllRead} className="text-[#6C4EF5] text-[10px] font-medium">Mark all read</button>}
             </div>
             {notifs.length === 0 && <p className="text-gray-400 text-xs text-center py-6">No notifications</p>}
             {notifs.map(n => (
@@ -75,7 +110,7 @@ export default function Topbar() {
                 <p className={n.isRead ? "text-gray-500" : "text-gray-800 dark:text-gray-200"}>{n.message}</p>
                 <div className="flex items-center justify-between mt-1">
                   <span className="text-gray-400 text-[10px]">{new Date(n.createdAt).toLocaleDateString()}</span>
-                  {!n.isRead && <button onClick={() => { markNotificationRead(n.id); setUnread(c => c - 1); setNotifs(ns => ns.map(x => x.id === n.id ? { ...x, isRead: true } : x)); }} className="text-[#6C4EF5] text-[10px]">Read</button>}
+                  {!n.isRead && <button onClick={() => handleMarkRead(n.id)} className="text-[#6C4EF5] text-[10px]">Read</button>}
                 </div>
               </div>
             ))}

@@ -32,18 +32,57 @@ export async function updateTask(
   },
 ) {
   if (data.columnId !== undefined || data.position !== undefined) {
-    const existing = await prisma.task.findUnique({ where: { id } });
+    const existing = await prisma.task.findUnique({
+      where: { id },
+      select: { id: true, columnId: true, position: true, version: true, column: { select: { boardId: true } } },
+    });
     if (!existing) throw new AppError(404, "not found");
     if (data.version !== undefined && existing.version !== data.version) {
       throw new AppError(409, "conflict - refresh and try again");
     }
-    return prisma.task.update({
+    const targetColumnId = data.columnId || existing.columnId;
+    const targetColumn = await prisma.column.findUnique({ where: { id: targetColumnId }, select: { boardId: true } });
+    if (!targetColumn) throw new AppError(404, "Target column not found");
+    if (targetColumn.boardId !== existing.column.boardId) {
+      throw new AppError(400, "Tasks cannot be moved to another board");
+    }
+
+    await prisma.$transaction(async tx => {
+      const targetTasks = await tx.task.findMany({
+        where: { columnId: targetColumnId, id: { not: id } },
+        orderBy: { position: "asc" },
+        select: { id: true },
+      });
+      const requestedPosition = data.position ?? existing.position;
+      const targetIndex = Math.max(0, Math.min(Math.trunc(requestedPosition), targetTasks.length));
+      targetTasks.splice(targetIndex, 0, { id });
+
+      if (existing.columnId !== targetColumnId) {
+        const sourceTasks = await tx.task.findMany({
+          where: { columnId: existing.columnId, id: { not: id } },
+          orderBy: { position: "asc" },
+          select: { id: true },
+        });
+        for (let position = 0; position < sourceTasks.length; position++) {
+          await tx.task.update({ where: { id: sourceTasks[position].id }, data: { position } });
+        }
+      }
+
+      for (let position = 0; position < targetTasks.length; position++) {
+        const task = targetTasks[position];
+        await tx.task.update({
+          where: { id: task.id },
+          data: task.id === id
+            ? { columnId: targetColumnId, position, version: { increment: 1 } }
+            : { position },
+        });
+      }
+    });
+
+    return prisma.task.findUniqueOrThrow({
       where: { id },
-      data: { ...data, version: { increment: 1 } },
       include: {
-        assignees: {
-          include: { user: { select: { id: true, name: true, email: true } } },
-        },
+        assignees: { include: { user: { select: { id: true, name: true, email: true } } } },
         taskLabels: { include: { label: true } },
         _count: { select: { comments: true, attachments: true } },
       },

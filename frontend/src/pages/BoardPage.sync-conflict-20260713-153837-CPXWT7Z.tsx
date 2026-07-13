@@ -13,17 +13,14 @@ import TaskCard from "../components/TaskCard/TaskCard";
 import TaskModal from "../components/TaskModal/TaskModal";
 import Layout from "../components/Layout/Layout";
 import type { Task, Column, Label, ActivityLog, BoardMember } from "../types";
-import { useAuthStore } from "../store/authStore";
 
 const tabs = [
-  { label: "All Tasks", key: "status" },
+  { label: "By Status", key: "status" },
+  { label: "By Total Tasks", key: "total" },
   { label: "Tasks Due", key: "due" },
+  { label: "Extra Tasks", key: "extra" },
   { label: "Tasks Completed", key: "completed" },
 ];
-
-function apiError(error: any, fallback: string) {
-  return error?.response?.data?.error || fallback;
-}
 
 export default function BoardPage() {
   const { id } = useParams<{ id: string }>();
@@ -35,13 +32,8 @@ export default function BoardPage() {
     addLabelToBoard, removeLabelFromBoard,
     addMemberToBoard, updateMemberInBoard, removeMemberFromBoard,
   } = useBoardStore();
-  const user = useAuthStore(state => state.user);
-  const currentRole = board?.members?.find(member => member.userId === user?.id)?.role;
-  const canManageBoard = currentRole === "admin" || currentRole === "owner";
-  const canEditTasks = canManageBoard || currentRole === "pm" || currentRole === "member";
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [loadError, setLoadError] = useState(false);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [showNewTask, setShowNewTask] = useState(false);
@@ -57,7 +49,7 @@ export default function BoardPage() {
   const [filterLabel, setFilterLabel] = useState("");
   const [filterAssignee, setFilterAssignee] = useState("");
   const [activeTab, setActiveTab] = useState("status");
-  const [sortBy, setSortBy] = useState("manual");
+  const [sortBy, setSortBy] = useState("newest");
   const [showFilters, setShowFilters] = useState(false);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [showLog, setShowLog] = useState(false);
@@ -77,15 +69,11 @@ export default function BoardPage() {
 
   const fetchBoard = useCallback(() => {
     if (!id) return;
-    if (useBoardStore.getState().currentBoard?.id !== id) setLoading(true);
+    setLoading(true);
     setNotFound(false);
-    setLoadError(false);
     getBoard(id)
       .then(data => setCurrentBoard(data))
-      .catch(error => {
-        if (error.response?.status === 403 || error.response?.status === 404) setNotFound(true);
-        else setLoadError(true);
-      })
+      .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [id, navigate, setCurrentBoard]);
 
@@ -107,10 +95,7 @@ export default function BoardPage() {
     const socket = connectSocket();
     joinBoard(id);
 
-    const hTaskUpdated = (task: Task) => {
-      updateTaskInState(task);
-      setSelectedTask(current => current?.id === task.id ? task : current);
-    };
+    const hTaskUpdated = (task: Task) => updateTaskInState(task);
     const hTaskDeleted = ({ id: tid }: { id: string }) => removeTaskFromState(tid);
     const hTaskCreated = (task: Task) => addTaskToState(task);
     const hColumnCreated = (col: Column) => addColumnToState(col);
@@ -133,7 +118,6 @@ export default function BoardPage() {
     socket.on("member:added", hMemberAdded);
     socket.on("member:updated", hMemberUpdated);
     socket.on("member:removed", hMemberRemoved);
-    socket.on("board:refresh", fetchBoard);
 
     return () => {
       leaveBoard(id);
@@ -148,9 +132,8 @@ export default function BoardPage() {
       socket.off("member:added", hMemberAdded);
       socket.off("member:updated", hMemberUpdated);
       socket.off("member:removed", hMemberRemoved);
-      socket.off("board:refresh", fetchBoard);
     };
-  }, [id, fetchBoard, updateTaskInState, removeTaskFromState, addTaskToState, addColumnToState, updateColumnInState, removeColumnFromState, addLabelToBoard, removeLabelFromBoard, addMemberToBoard, updateMemberInBoard, removeMemberFromBoard]);
+  }, [id, updateTaskInState, removeTaskFromState, addTaskToState, addColumnToState, updateColumnInState, removeColumnFromState, addLabelToBoard, removeLabelFromBoard, addMemberToBoard, updateMemberInBoard, removeMemberFromBoard]);
 
   const filteredTasks = useCallback((col: Column) => {
     let tasks = col.tasks;
@@ -162,16 +145,14 @@ export default function BoardPage() {
     if (activeTab === "completed") tasks = tasks.filter(t => col.name.toLowerCase() === "done");
 
     if (sortBy === "oldest") tasks = [...tasks].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-    else if (sortBy === "newest") tasks = [...tasks].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    else tasks = [...tasks].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return tasks;
   }, [search, filterLabel, filterAssignee, activeTab, sortBy]);
 
   const hasActiveFilters = search || filterLabel || filterAssignee || activeTab !== "status";
-  const canReorderTasks = canEditTasks && sortBy === "manual" && !hasActiveFilters;
 
   const handleDragStart = (event: DragStartEvent) => {
-    if (!canEditTasks) return;
     const activeId = event.active.id as string;
     if (activeId.startsWith("column-")) return;
     for (const col of board?.columns || []) {
@@ -183,12 +164,11 @@ export default function BoardPage() {
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveTask(null);
     const { active, over } = event;
-    if (!over || !board || !canEditTasks) return;
+    if (!over || !board) return;
     const activeId = active.id as string;
     const overId = over.id as string;
 
     if (activeId.startsWith("column-")) {
-      if (!canManageBoard) return;
       const colId = activeId.replace("column-", "");
       const targetId = overId.startsWith("column-") ? overId.replace("column-", "") : overId;
       if (colId === targetId) return;
@@ -216,26 +196,23 @@ export default function BoardPage() {
     const targetTasks = targetCol.tasks.filter(t => t.id !== activeId);
     let newPosition: number;
     if (targetCol.id === overId) {
-      newPosition = targetTasks.length;
+      newPosition = targetTasks.length ? Math.max(...targetTasks.map(t => t.position)) + 1 : 0;
     } else {
-      if (sourceCol.id === targetCol.id) {
-        const originalIndex = targetCol.tasks.findIndex(t => t.id === overId);
-        newPosition = originalIndex === -1 ? targetTasks.length : originalIndex;
-      } else {
-        const targetIndex = targetTasks.findIndex(t => t.id === overId);
-        newPosition = targetIndex === -1 ? targetTasks.length : targetIndex;
-      }
+      const idx = targetTasks.findIndex(t => t.id === overId);
+      if (idx === -1) newPosition = targetTasks.length ? Math.max(...targetTasks.map(t => t.position)) + 1 : 0;
+      else if (idx === 0) newPosition = targetTasks.length ? targetTasks[0].position - 1 : 0;
+      else newPosition = (targetTasks[idx - 1].position + targetTasks[idx].position) / 2;
     }
     moveTask(activeId, sourceCol.id, targetCol.id, newPosition, task.version + 1);
     updateTask(activeId, { column_id: targetCol.id, position: newPosition, version: task.version })
-      .then(() => { fetchBoard(); toast("Task moved", "success"); })
-      .catch((err) => { fetchBoard(); toast(err.response?.data?.error || "Failed to move task", "error"); });
+      .then(() => toast("Task moved", "success"))
+      .catch(err => { if (err.response?.status === 409) fetchBoard(); });
   };
 
   const loadLogs = useCallback(async () => {
     if (!id) return;
-    try { setLogs(await getActivityLogs(id)); } catch (error: any) { toast(apiError(error, "Could not load activity"), "error"); }
-  }, [id, toast]);
+    try { setLogs(await getActivityLogs(id)); } catch {}
+  }, [id]);
 
   useEffect(() => { if (showLog) loadLogs(); }, [showLog, loadLogs]);
 
@@ -244,18 +221,16 @@ export default function BoardPage() {
       title, message, variant: "danger",
       onConfirm: async () => {
         setConfirm(null);
-        try { await action(); toast(successMsg, "success"); } catch (error: any) { toast(apiError(error, "Action failed"), "error"); }
+        try { await action(); toast(successMsg, "success"); } catch { toast("Action failed", "error"); }
       },
     });
   };
 
   const handleAddColumn = async () => {
     if (!newColName.trim() || !id) return;
-    try {
-      await createColumn(id, newColName.trim());
-      setNewColName(""); setShowNewCol(false);
-      toast(`Column created`, "success");
-    } catch (error: any) { toast(apiError(error, "Failed to create column"), "error"); }
+    await createColumn(id, newColName);
+    setNewColName(""); setShowNewCol(false);
+    toast(`Column "${newColName}" created`, "success");
   };
 
   const handleDeleteColumn = (colId: string, colName: string) => {
@@ -267,18 +242,16 @@ export default function BoardPage() {
       const updated = await updateColumn(colId, { name });
       updateColumnInState(updated);
       toast(`Column renamed`, "success");
-    } catch (error: any) { toast(apiError(error, "Failed to rename column"), "error"); }
+    } catch { toast("Failed to rename column", "error"); }
   };
 
   const handleAddTask = async (colId: string, customTitle?: string) => {
     const title = customTitle || newTaskTitles[colId]?.trim();
     if (!title) return;
-    try {
-      const task = await createTask(colId, title);
-      addTaskToState(task);
-      setNewTaskTitles(p => ({ ...p, [colId]: "" }));
-      toast(`Task created`, "success");
-    } catch (error: any) { toast(apiError(error, "Failed to create task"), "error"); }
+    const task = await createTask(colId, title);
+    addTaskToState(task);
+    setNewTaskTitles(p => ({ ...p, [colId]: "" }));
+    toast(`Task created`, "success");
   };
 
   const handleDeleteTask = (taskId: string, title: string) => {
@@ -287,12 +260,10 @@ export default function BoardPage() {
 
   const handleAddLabel = async () => {
     if (!newLabelName.trim() || !id) return;
-    try {
-      const label = await createLabel(id, newLabelName.trim(), newLabelColor);
-      addLabelToBoard(label);
-      setNewLabelName(""); setShowNewLabel(false);
-      toast(`Label created`, "success");
-    } catch (error: any) { toast(apiError(error, "Failed to create label"), "error"); }
+    const label = await createLabel(id, newLabelName, newLabelColor);
+    addLabelToBoard(label);
+    setNewLabelName(""); setShowNewLabel(false);
+    toast(`Label created`, "success");
   };
 
   const handleDeleteLabel = (labelId: string, labelName: string) => {
@@ -305,7 +276,7 @@ export default function BoardPage() {
       await inviteMember(id, inviteEmail);
       setInviteEmail("");
       toast("Member invited", "success");
-    } catch (error: any) { toast(apiError(error, "Failed to invite member"), "error"); }
+    } catch { toast("Failed to invite member", "error"); }
   };
 
   const handleUpdateMemberRole = async (userId: string, role: string) => {
@@ -313,7 +284,7 @@ export default function BoardPage() {
       const updated = await updateMemberRole(id!, userId, role);
       updateMemberInBoard(updated);
       toast("Member role updated", "success");
-    } catch (error: any) { toast(apiError(error, "Failed to update role"), "error"); }
+    } catch { toast("Failed to update role", "error"); }
   };
 
   const handleRemoveMember = (userId: string, userName: string) => {
@@ -394,15 +365,6 @@ export default function BoardPage() {
     </div></Layout>
   );
 
-  if (loadError) return (
-    <Layout flush><div className="flex h-full bg-bg-page dark:bg-bg-dark items-center justify-center">
-      <div className="card p-8 text-center">
-        <p className="text-gray-600 dark:text-gray-300">Could not load this board.</p>
-        <button onClick={fetchBoard} className="btn-primary text-xs mt-4">Try again</button>
-      </div>
-    </div></Layout>
-  );
-
   if (!board) return null;
 
   const totalTasks = board.columns.reduce((s, c) => s + c.tasks.length, 0);
@@ -439,18 +401,18 @@ export default function BoardPage() {
                     />
                   </div>
                 ) : (
-                  <h1 className="text-lg font-bold text-[#1A1A2E] dark:text-white" onDoubleClick={() => { skipBoardNameBlurRef.current = false; setEditingBoard(true); setBoardNameValue(board.name); }}>
+                  <h1 className="text-lg font-bold text-[#1A1A2E] dark:text-white" onDoubleClick={() => { setEditingBoard(true); setBoardNameValue(board.name); }}>
                     {board.name}
                   </h1>
                 )}
-                {canManageBoard && <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
-                  <button onClick={() => { skipBoardNameBlurRef.current = false; setEditingBoard(true); setBoardNameValue(board.name); }} className="p-1 rounded text-gray-300 dark:text-gray-600 hover:text-[#6C4EF5] hover:bg-[#6C4EF5]/10 transition" title="Rename">
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                  <button onClick={() => { setEditingBoard(true); setBoardNameValue(board.name); }} className="p-1 rounded text-gray-300 dark:text-gray-600 hover:text-[#6C4EF5] hover:bg-[#6C4EF5]/10 transition" title="Rename">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
                   </button>
                   <button onClick={handleDeleteBoardAction} className="p-1 rounded text-gray-300 dark:text-gray-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition" title="Delete">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
                   </button>
-                </div>}
+                </div>
               </div>
               <div className="flex items-center gap-1.5 mt-1">
                 <button onClick={() => navigate("/")} className="text-[11px] text-gray-400 hover:text-[#6C4EF5] transition">Home</button>
@@ -500,7 +462,7 @@ export default function BoardPage() {
               <button onClick={handleExportBoard} className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Export">
                 <Upload size={14} />
               </button>
-              {canEditTasks && <div className="relative">
+              <div className="relative">
                 <button onClick={() => { setShowNewTask(true); setNewTaskColId(board.columns[0]?.id || ""); setNewTaskTitleInput(""); }} className="w-7 h-7 rounded-full bg-[#6C4EF5] text-white flex items-center justify-center hover:bg-[#5A3FD6] transition shadow-sm" title="New Task">
                   <Plus size={14} />
                 </button>
@@ -528,7 +490,7 @@ export default function BoardPage() {
                     </div>
                   </div>
                 )}
-              </div>}
+              </div>
             </div>
           </div>
 
@@ -545,7 +507,7 @@ export default function BoardPage() {
                   }`}
                 >
                   {tab.label}
-                  {tab.key === "status" && <span className="ml-1 text-[10px] opacity-60">({totalTasks})</span>}
+                  {tab.key === "total" && <span className="ml-1 text-[10px] opacity-60">({totalTasks})</span>}
                 </button>
               ))}
             </div>
@@ -559,15 +521,14 @@ export default function BoardPage() {
               <button onClick={() => setShowMembers(!showMembers)} className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Members">
                 <Users size={14} />
               </button>
-              {canManageBoard && <button onClick={() => setShowNewLabel(!showNewLabel)} className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Labels">
+              <button onClick={() => setShowNewLabel(!showNewLabel)} className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Labels">
                 <Tag size={14} />
-              </button>}
+              </button>
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value)}
                 className="text-xs bg-gray-100 dark:bg-gray-800 rounded-full px-2.5 py-1.5 border border-gray-200 dark:border-gray-600 outline-none text-gray-500 dark:text-gray-400"
               >
-                <option value="manual">Sort By: Board order</option>
                 <option value="newest">Sort By: Newest</option>
                 <option value="oldest">Sort By: Oldest</option>
               </select>
@@ -597,7 +558,7 @@ export default function BoardPage() {
                   <div className="flex flex-col items-center justify-center w-full h-48 gap-2 text-gray-400">
                     <ListTodo size={28} className="text-gray-300 dark:text-gray-600" />
                     <p className="text-sm">No columns yet</p>
-                    {canManageBoard && <button onClick={() => setShowNewCol(true)} className="btn-primary text-xs">Create your first column</button>}
+                    <button onClick={() => setShowNewCol(true)} className="btn-primary text-xs">Create your first column</button>
                   </div>
                 )}
                 {board.columns.map((col, idx) => (
@@ -615,18 +576,15 @@ export default function BoardPage() {
                     }}
                     onTaskClick={task => setSelectedTask(task)}
                     onRenameColumn={(name) => handleRenameColumn(col.id, name)}
-                    canEditTasks={canEditTasks}
-                    canReorderTasks={canReorderTasks}
-                    canManageColumn={canManageBoard}
                   />
                 ))}
-                {canManageBoard && !showNewCol && (
+                {!showNewCol && (
                   <button onClick={() => setShowNewCol(true)} className="card p-3 w-72 shrink-0 self-start flex items-center justify-center gap-2 text-gray-400 hover:text-[#6C4EF5] hover:border-[#6C4EF5]/30 border-2 border-dashed border-gray-300 dark:border-gray-600 transition-all duration-200 min-h-[80px] rounded-2xl">
                     <Plus size={16} />
                     <span className="text-sm font-medium">Add Column</span>
                   </button>
                 )}
-                {canManageBoard && showNewCol && (
+                {showNewCol && (
                   <div className="card p-4 w-72 shrink-0 self-start border-2 border-dashed border-[#6C4EF5]/30 bg-[#6C4EF5]/5">
                     <h3 className="text-xs font-semibold text-[#6C4EF5] mb-3">Add Column</h3>
                     <input value={newColName} onChange={e => setNewColName(e.target.value)} placeholder="Column name" className="input text-sm mb-2" autoFocus onKeyDown={e => e.key === 'Enter' && handleAddColumn()} />
@@ -681,7 +639,7 @@ export default function BoardPage() {
                     <p className="text-xs text-gray-400">{m.user.email}</p>
                   </div>
                 </div>
-                {canManageBoard && <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1 shrink-0">
                   <select value={m.role} onChange={e => handleUpdateMemberRole(m.userId, e.target.value)} className="text-xs bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded px-1.5 py-0.5 outline-none text-gray-600 dark:text-gray-400">
                     <option value="admin">Admin</option>
                     <option value="pm">Project Manager</option>
@@ -689,18 +647,18 @@ export default function BoardPage() {
                     <option value="viewer">Viewer</option>
                   </select>
                   <button onClick={() => handleRemoveMember(m.userId, m.user.name)} className="p-1 rounded text-gray-300 dark:text-gray-600 hover:text-red-500 transition"><X size={12} /></button>
-                </div>}
+                </div>
               </div>
             ))}
           </div>
-          {canManageBoard && <div className="flex gap-2">
+          <div className="flex gap-2">
             <input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} placeholder="Email..." className="input flex-1 text-sm" onKeyDown={e => e.key === 'Enter' && handleInvite()} />
             <button onClick={handleInvite} className="btn-primary text-xs">Invite</button>
-          </div>}
+          </div>
         </div>
       )}
 
-      {canManageBoard && showNewLabel && (
+      {showNewLabel && (
         <div className="fixed left-4 right-4 sm:left-auto sm:w-80 top-24 bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl z-40 p-4 animate-slide-right">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -728,7 +686,7 @@ export default function BoardPage() {
       )}
 
       {selectedTask && (
-        <TaskModal task={selectedTask} board={board} canEdit={canEditTasks} onClose={() => setSelectedTask(null)} onUpdate={task => { updateTaskInState(task); setSelectedTask(task); }} />
+        <TaskModal task={selectedTask} board={board} onClose={() => setSelectedTask(null)} onUpdate={task => { updateTaskInState(task); setSelectedTask(task); }} />
       )}
 
       <ConfirmDialog

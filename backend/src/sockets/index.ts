@@ -21,6 +21,7 @@ export function setupSocket(_io: Server) {
   });
 
   io.on("connection", (socket: Socket) => {
+    socket.join(`user:${socket.data.userId}`);
     socket.on("board:join", async (boardId: string) => {
       if (typeof boardId !== "string") return;
       try {
@@ -47,4 +48,8 @@ export function getIO(): Server {
 
 export function emitBoardEvent(boardId: string, event: string, data: unknown) {
   io?.to(`board:${boardId}`).emit(event, data);
+}
+
+export function emitUserEvent(userId: string, event: string, data: unknown) {
+  io?.to(`user:${userId}`).emit(event, data);
 }

@@ -18,6 +18,9 @@ interface ColumnViewProps {
   onDeleteTask: (taskId: string) => void;
   onTaskClick: (task: Task) => void;
   onRenameColumn: (name: string) => void;
+  canEditTasks?: boolean;
+  canReorderTasks?: boolean;
+  canManageColumn?: boolean;
 }
 
 export default function ColumnView({
@@ -30,14 +33,22 @@ export default function ColumnView({
   onDeleteTask,
   onTaskClick,
   onRenameColumn,
+  canEditTasks = true,
+  canReorderTasks = canEditTasks,
+  canManageColumn = true,
 }: ColumnViewProps) {
-  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: column.id });
+  const { setNodeRef: setDropRef, isOver } = useDroppable({ id: column.id, disabled: !canReorderTasks });
   const { attributes, listeners, setNodeRef: setDragRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: `column-${column.id}`,
+    disabled: !canManageColumn,
   });
 
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState(column.name);
   const menuRef = useRef<HTMLDivElement>(null);
+  const renameRef = useRef<HTMLInputElement>(null);
+  const skipRenameBlurRef = useRef(false);
   const colColor = COLORS[colorIndex % COLORS.length];
 
   useEffect(() => {
@@ -47,6 +58,40 @@ export default function ColumnView({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (isRenaming) {
+      renameRef.current?.focus();
+      renameRef.current?.select();
+    }
+  }, [isRenaming]);
+
+  useEffect(() => {
+    if (!isRenaming) setRenameValue(column.name);
+  }, [column.name, isRenaming]);
+
+  const startRenaming = () => {
+    skipRenameBlurRef.current = false;
+    setRenameValue(column.name);
+    setIsRenaming(true);
+    setMenuOpen(false);
+  };
+
+  const cancelRenaming = () => {
+    skipRenameBlurRef.current = true;
+    setRenameValue(column.name);
+    setIsRenaming(false);
+  };
+
+  const saveRename = () => {
+    const name = renameValue.trim();
+    if (!name) {
+      cancelRenaming();
+      return;
+    }
+    setIsRenaming(false);
+    if (name !== column.name) onRenameColumn(name);
+  };
 
   const dragStyle = {
     transform: CSS.Transform.toString(transform),
@@ -65,7 +110,7 @@ export default function ColumnView({
         style={{ backgroundColor: colColor }}
       >
         <div className="flex items-center gap-1 min-w-0">
-          <button
+          {canManageColumn && <button
             ref={setActivatorNodeRef}
             {...attributes}
             {...listeners}
@@ -73,40 +118,62 @@ export default function ColumnView({
             title="Drag to reorder"
           >
             <GripVertical size={11} />
-          </button>
+          </button>}
           <span className="w-7 h-7 rounded-full bg-white/30 backdrop-blur-sm flex items-center justify-center text-white text-xs font-bold shrink-0">
             {column.tasks.length}
           </span>
-          <h3 className="text-sm font-bold text-white truncate">{column.name}</h3>
+          {isRenaming ? (
+            <input
+              ref={renameRef}
+              value={renameValue}
+              onChange={event => setRenameValue(event.target.value)}
+              onBlur={() => {
+                if (skipRenameBlurRef.current) {
+                  skipRenameBlurRef.current = false;
+                  return;
+                }
+                saveRename();
+              }}
+              onPointerDown={event => event.stopPropagation()}
+              onKeyDown={event => {
+                if (event.key === "Enter") event.currentTarget.blur();
+                if (event.key === "Escape") cancelRenaming();
+              }}
+              aria-label="Column name"
+              className="min-w-0 w-full rounded-md bg-white/20 px-2 py-1 text-sm font-bold text-white outline-none ring-1 ring-white/50 placeholder:text-white/60"
+            />
+          ) : (
+            <h3 className="text-sm font-bold text-white truncate" onDoubleClick={startRenaming}>{column.name}</h3>
+          )}
         </div>
         <div className="flex items-center gap-1">
-          <button
+          {canEditTasks && <button
             onClick={onAddTask}
             className="w-6 h-6 rounded-full bg-white/30 hover:bg-white/50 backdrop-blur-sm flex items-center justify-center text-white transition"
             title="Add task"
           >
             <Plus size={14} />
-          </button>
-          <div className="relative" ref={menuRef}>
+          </button>}
+          {canManageColumn && <div className="relative" ref={menuRef}>
             <button onClick={() => setMenuOpen(!menuOpen)} className="w-6 h-6 rounded-full bg-white/30 hover:bg-white/50 backdrop-blur-sm flex items-center justify-center text-white transition">
               <MoreHorizontal size={12} />
             </button>
             {menuOpen && (
               <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-1 min-w-[120px] z-20 animate-scale-in">
-                <button onClick={() => { document.getElementById(`rename-${column.id}`)?.click(); setMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Rename</button>
+                <button onClick={startRenaming} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">Rename</button>
                 <button onClick={() => { onDeleteColumn(); setMenuOpen(false); }} className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30">
                   <Trash2 size={12} /> Delete
                 </button>
               </div>
             )}
-          </div>
+          </div>}
         </div>
       </div>
 
       <div ref={setDropRef} className="flex-1 min-h-[60px] space-y-2.5 overflow-y-auto scrollbar-thin">
         <SortableContext items={column.tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {column.tasks.map((task) => (
-            <TaskCard key={task.id} task={task} onDelete={onDeleteTask} onClick={() => onTaskClick(task)} />
+            <TaskCard key={task.id} task={task} onDelete={canEditTasks ? onDeleteTask : undefined} onClick={() => onTaskClick(task)} disabled={!canReorderTasks} />
           ))}
         </SortableContext>
         {column.tasks.length === 0 && (
@@ -116,7 +183,7 @@ export default function ColumnView({
         )}
       </div>
 
-      <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+      {canEditTasks && <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
         <div className="flex items-center gap-2">
           <Plus size={14} className="text-gray-400 shrink-0" />
           <input
@@ -127,7 +194,7 @@ export default function ColumnView({
             onKeyDown={(e) => e.key === "Enter" && onAddTask()}
           />
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

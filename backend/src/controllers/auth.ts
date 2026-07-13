@@ -51,7 +51,7 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
     const payload = authService.verifyRefreshToken(token);
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { id: true, name: true, email: true },
+      select: { id: true, name: true, email: true, createdAt: true },
     });
     if (!user) {
       return res.status(401).json({ error: "User not found" });

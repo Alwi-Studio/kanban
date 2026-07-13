@@ -15,6 +15,7 @@ import { dashboardRouter } from "./routes/dashboard";
 import { globalBoardRouter } from "./routes/globalBoard";
 import { errorHandler } from "./middlewares/errorHandler";
 import { setupSocket } from "./sockets";
+import { UPLOAD_DIR } from "./middlewares/upload";
 
 dotenv.config();
 
@@ -59,7 +60,7 @@ const io = new Server(httpServer, {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
-app.use("/uploads", express.static("uploads"));
+app.use("/uploads", express.static(UPLOAD_DIR, { fallthrough: false }));
 
 app.use("/api/auth", authRouter);
 app.use("/api/workspaces", workspaceRouter);

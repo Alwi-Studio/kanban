@@ -6,13 +6,13 @@ import { validate } from "../middlewares/validate";
 export const authRouter = Router();
 
 const registerSchema = z.object({
-  name: z.string().min(1, "Name is required").max(100),
-  email: z.string().email("Invalid email"),
+  name: z.string().trim().min(1, "Name is required").max(100),
+  email: z.string().trim().email("Invalid email").transform(value => value.toLowerCase()),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email"),
+  email: z.string().trim().email("Invalid email").transform(value => value.toLowerCase()),
   password: z.string().min(1, "Password is required"),
 });
 

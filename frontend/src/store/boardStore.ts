@@ -25,25 +25,18 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   moveTask: (taskId, fromColId, toColId, newPosition, newVersion) => {
     const board = get().currentBoard;
     if (!board) return;
+    const task = board.columns.flatMap((column) => column.tasks).find((item) => item.id === taskId);
+    if (!task) return;
     const newColumns = board.columns.map((col) => {
-      if (col.id === fromColId) {
-        const task = col.tasks.find((t) => t.id === taskId);
-        return {
-          ...col,
-          tasks: task ? col.tasks.filter((t) => t.id !== taskId) : col.tasks,
-        };
-      }
+      const withoutTask = col.tasks.filter((item) => item.id !== taskId);
       if (col.id === toColId) {
-        const task = board.columns
-          .find((c) => c.id === fromColId)
-          ?.tasks.find((t) => t.id === taskId);
-        if (!task) return col;
         const updatedTask = { ...task, columnId: toColId, position: newPosition, version: newVersion };
-        const tasks = [...col.tasks.filter((t) => t.id !== taskId), updatedTask].sort(
+        const tasks = [...withoutTask, updatedTask].sort(
           (a, b) => a.position - b.position,
         );
         return { ...col, tasks };
       }
+      if (col.id === fromColId) return { ...col, tasks: withoutTask };
       return col;
     });
     set({ currentBoard: { ...board, columns: newColumns } });
@@ -95,7 +88,7 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   updateColumnInState: (col) => {
     const board = get().currentBoard;
     if (!board) return;
-    const newColumns = board.columns.map((c) => (c.id === col.id ? col : c));
+    const newColumns = board.columns.map((c) => (c.id === col.id ? { ...c, ...col, tasks: col.tasks || c.tasks } : c));
     set({ currentBoard: { ...board, columns: newColumns } });
   },
 

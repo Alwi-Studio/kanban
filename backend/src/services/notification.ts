@@ -1,5 +1,5 @@
 import prisma from "../lib/prisma";
-import { emitBoardEvent } from "../sockets";
+import { emitUserEvent } from "../sockets";
 
 
 export async function createNotification(
@@ -11,8 +11,7 @@ export async function createNotification(
   const notif = await prisma.notification.create({
     data: { userId, boardId, taskId, message },
   });
-  // Emit to the user's personal room (or board room for simplicity)
-  emitBoardEvent(boardId, "notification:new", notif);
+  emitUserEvent(userId, "notification:new", notif);
   return notif;
 }
 

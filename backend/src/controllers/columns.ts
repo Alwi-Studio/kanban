@@ -19,11 +19,13 @@ export async function updateColumn(req: Request, res: Response, next: NextFuncti
   try {
     const { name, position } = req.body;
     const column = await columnService.updateColumn(req.params.id, { name, position });
+    if (!column) return res.status(404).json({ error: "Column not found" });
     if (name && req.user) {
       const col = await prisma.column.findUnique({ where: { id: req.params.id }, select: { boardId: true } });
       if (col) await createLog(col.boardId, req.user.userId, `Renamed column to "${name}"`);
-      emitBoardEvent(col!.boardId, "column:updated", column);
+      if (col) emitBoardEvent(col.boardId, "column:updated", column);
     }
+    if (position !== undefined) emitBoardEvent(column.boardId, "board:refresh", { boardId: column.boardId });
     res.json(column);
   } catch (err) { next(err); }
 }

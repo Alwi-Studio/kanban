@@ -29,8 +29,8 @@ api.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
-    // Don't intercept refresh requests to avoid loops
-    if (original?.url?.includes("/auth/refresh")) {
+    // Auth form errors must reach the form; refreshing here would hide bad credentials.
+    if (/\/auth\/(login|register|refresh)/.test(original?.url || "")) {
       return Promise.reject(error);
     }
     if (error.response?.status === 401 && !original._retry) {

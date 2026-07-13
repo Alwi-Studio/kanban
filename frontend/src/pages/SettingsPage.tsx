@@ -1,12 +1,16 @@
+import { useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import Layout from "../components/Layout/Layout";
 
 export default function SettingsPage() {
-  const isDark = document.documentElement.classList.contains("dark");
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains("dark"));
 
   const toggleDark = () => {
-    document.documentElement.classList.toggle("dark");
-    localStorage.setItem("darkMode", String(!isDark));
+    const next = !isDark;
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("darkMode", String(next));
+    setIsDark(next);
+    window.dispatchEvent(new CustomEvent("dark-mode-change", { detail: next }));
   };
 
   return (

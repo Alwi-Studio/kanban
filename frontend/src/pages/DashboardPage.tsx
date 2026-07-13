@@ -54,14 +54,19 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [period, setPeriod] = useState<Period>("30d");
 
-  useEffect(() => {
+  const loadStats = () => {
+    setLoading(true);
+    setError(false);
     getDashboardStats()
       .then(setStats)
-      .catch(() => {})
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(loadStats, []);
 
   const filteredTrends = (() => {
     if (!stats) return [];
@@ -100,6 +105,13 @@ export default function DashboardPage() {
         </div>
       </Layout>
     );
+  }
+
+  if (error) {
+    return <Layout><div className="card max-w-lg mx-auto p-10 text-center">
+      <p className="text-gray-600 dark:text-gray-300">Could not load dashboard statistics.</p>
+      <button onClick={loadStats} className="btn-primary mt-4">Try again</button>
+    </div></Layout>;
   }
 
   return (

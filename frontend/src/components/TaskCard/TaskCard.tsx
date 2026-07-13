@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { MessageSquare, Eye } from "lucide-react";
+import { MessageSquare, Paperclip, Trash2 } from "lucide-react";
 import AvatarStack from "../ui/AvatarStack";
 import type { Task } from "../../types";
 
@@ -9,6 +9,7 @@ interface TaskCardProps {
   onDelete?: (taskId: string) => void;
   onClick?: () => void;
   isDragOverlay?: boolean;
+  disabled?: boolean;
 }
 
 const labelColors: Record<string, string> = {
@@ -34,23 +35,16 @@ function getLabelClass(colorHex: string) {
   return labelColors.peach;
 }
 
-export default function TaskCard({ task, onDelete, onClick, isDragOverlay }: TaskCardProps) {
+export default function TaskCard({ task, onDelete, onClick, isDragOverlay, disabled = false }: TaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
-    disabled: isDragOverlay,
+    disabled: isDragOverlay || disabled,
   });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : undefined,
-  };
-
-  const viewCount = task._count?.comments ? Math.max(task._count.comments * 37 + 120, 150) : 150;
-
-  const formatViews = (n: number) => {
-    if (n >= 1000) return (n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(".", ",") + "k";
-    return String(n);
   };
 
   return (
@@ -60,10 +54,21 @@ export default function TaskCard({ task, onDelete, onClick, isDragOverlay }: Tas
       {...attributes}
       {...listeners}
       onClick={onClick}
-      className={`bg-white dark:bg-[#1D2939] rounded-2xl border border-gray-100 dark:border-gray-700 p-3.5 cursor-grab active:cursor-grabbing transition-all duration-200 hover:shadow-md ${
+      className={`group relative bg-white dark:bg-[#1D2939] rounded-2xl border border-gray-100 dark:border-gray-700 p-3.5 ${disabled ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"} transition-all duration-200 hover:shadow-md ${
         isDragOverlay ? "shadow-xl scale-[1.02] rotate-[1deg]" : "shadow-sm"
       }`}
     >
+      {onDelete && !isDragOverlay && (
+        <button
+          onPointerDown={event => event.stopPropagation()}
+          onClick={event => { event.stopPropagation(); onDelete(task.id); }}
+          className="absolute right-2 top-2 z-10 rounded-lg bg-white/90 dark:bg-gray-800 p-1.5 text-gray-300 opacity-0 shadow-sm transition hover:text-red-500 group-hover:opacity-100 focus:opacity-100"
+          aria-label={`Delete ${task.title}`}
+          title="Delete task"
+        >
+          <Trash2 size={12} />
+        </button>
+      )}
       {task.taskLabels && task.taskLabels.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-2">
           {task.taskLabels.map((tl) => (
@@ -87,7 +92,7 @@ export default function TaskCard({ task, onDelete, onClick, isDragOverlay }: Tas
             <MessageSquare size={11} /> {task._count?.comments || 0}
           </span>
           <span className="flex items-center gap-1">
-            <Eye size={11} /> {formatViews(viewCount)}
+            <Paperclip size={11} /> {task._count?.attachments || 0}
           </span>
         </div>
       </div>

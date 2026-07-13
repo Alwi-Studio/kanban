@@ -38,7 +38,7 @@ export default function ProfilePage() {
             <div className="flex items-center gap-3 text-sm">
               <Calendar size={16} className="text-gray-400" />
               <span className="text-gray-500 w-20">Joined</span>
-              <span className="text-gray-900 dark:text-white font-medium">—</span>
+              <span className="text-gray-900 dark:text-white font-medium">{user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}</span>
             </div>
           </div>
         </div>
