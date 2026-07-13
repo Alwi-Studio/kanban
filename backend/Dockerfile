@@ -2,15 +2,15 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
-COPY .npmrc ./
+COPY backend/package*.json ./
+COPY backend/.npmrc ./
 
 RUN npm install
 
-COPY prisma ./prisma
+COPY backend/prisma ./prisma
 RUN npx prisma generate
 
-COPY . .
+COPY backend/. .
 
 RUN npm run build
 
