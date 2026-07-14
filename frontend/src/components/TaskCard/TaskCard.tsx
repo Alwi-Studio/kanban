@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CalendarDays, MessageSquare, Paperclip, Trash2, Plus } from "lucide-react";
+import { CalendarDays, MessageSquare, Paperclip, Trash2, Plus, CheckCircle2 } from "lucide-react";
 import AvatarStack from "../ui/AvatarStack";
 import type { Task, Label } from "../../types";
 
@@ -63,9 +63,10 @@ export default function TaskCard({ task, onDelete, onClick, labels, onAddLabel, 
     transition,
     opacity: isDragging ? 0.4 : undefined,
   };
+  const isCompleted = !!task.completedAt;
   const dueDate = task.dueDate ? new Date(task.dueDate) : null;
-  const isOverdue = dueDate ? dueDate.getTime() < Date.now() : false;
-  const isDueSoon = dueDate ? !isOverdue && dueDate.getTime() - Date.now() < 3 * 86400000 : false;
+  const isOverdue = dueDate ? !isCompleted && dueDate.getTime() < Date.now() : false;
+  const isDueSoon = dueDate ? !isOverdue && !isCompleted && dueDate.getTime() - Date.now() < 3 * 86400000 : false;
 
   return (
     <div
@@ -77,9 +78,11 @@ export default function TaskCard({ task, onDelete, onClick, labels, onAddLabel, 
       onKeyDown={event => { if ((event.key === "Enter" || event.key === " ") && onClick) { event.preventDefault(); onClick(); } }}
       role="button"
       tabIndex={0}
-      className={`group relative bg-white dark:bg-[#1D2939] rounded-xl border border-gray-200/80 dark:border-gray-700 p-3.5 ${disabled ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"} transition-all duration-200 hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-md focus-visible:border-brand ${
-        isDragOverlay ? "shadow-xl scale-[1.02] rotate-[1deg]" : "shadow-sm"
-      }`}
+      className={`group relative rounded-xl border p-3.5 ${disabled ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"} transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:border-brand ${
+        isCompleted
+          ? "bg-emerald-50/60 dark:bg-emerald-500/5 border-emerald-300/70 dark:border-emerald-500/30 hover:border-emerald-400"
+          : "bg-white dark:bg-[#1D2939] border-gray-200/80 dark:border-gray-700 hover:border-brand/30"
+      } ${isDragOverlay ? "shadow-xl scale-[1.02] rotate-[1deg]" : "shadow-sm"}`}
     >
       {onDelete && !isDragOverlay && (
         <button
@@ -130,7 +133,10 @@ export default function TaskCard({ task, onDelete, onClick, labels, onAddLabel, 
         </div>
       )}
 
-      <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-snug line-clamp-2 mb-1 pr-4">{task.title}</p>
+      <div className="flex items-start gap-1.5 mb-1 pr-4">
+        {isCompleted && <CheckCircle2 size={14} className="text-emerald-500 shrink-0 mt-0.5" />}
+        <p className={`text-sm font-semibold leading-snug line-clamp-2 ${isCompleted ? "text-gray-500 dark:text-gray-400 line-through decoration-gray-400" : "text-gray-900 dark:text-gray-100"}`}>{task.title}</p>
+      </div>
 
       {task.description && <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">{task.description}</p>}
 
