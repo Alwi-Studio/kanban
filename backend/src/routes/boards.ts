@@ -31,14 +31,30 @@ const createLabelSchema = z.object({
   name: z.string().trim().min(1).max(50),
   color_hex: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid label color"),
 });
+const triggerTypeEnum = z.enum(["TASK_CREATED", "LABEL_ADDED", "LABEL_REMOVED"]);
 const createAutomationSchema = z.object({
-  label_id: z.string().uuid(),
-  target_column_id: z.string().uuid(),
-});
+  trigger_type: triggerTypeEnum,
+  trigger_label_id: z.string().uuid().nullish(),
+  trigger_column_id: z.string().uuid().nullish(),
+  add_label_ids: z.array(z.string().uuid()).default([]),
+  remove_label_ids: z.array(z.string().uuid()).default([]),
+  target_column_id: z.string().uuid().nullish(),
+}).refine(
+  value => (value.trigger_type === "TASK_CREATED" ? !!value.trigger_column_id : !!value.trigger_label_id),
+  "Trigger requires a matching label or column",
+).refine(
+  value => value.add_label_ids.length > 0 || value.remove_label_ids.length > 0 || !!value.target_column_id,
+  "A rule must have at least one action",
+);
 const updateAutomationSchema = z.object({
-  target_column_id: z.string().uuid().optional(),
+  trigger_type: triggerTypeEnum.optional(),
+  trigger_label_id: z.string().uuid().nullish(),
+  trigger_column_id: z.string().uuid().nullish(),
+  add_label_ids: z.array(z.string().uuid()).optional(),
+  remove_label_ids: z.array(z.string().uuid()).optional(),
+  target_column_id: z.string().uuid().nullish(),
   enabled: z.boolean().optional(),
-}).refine(value => value.target_column_id !== undefined || value.enabled !== undefined, "No changes supplied");
+}).refine(value => Object.keys(value).length > 0, "No changes supplied");
 
 boardRouter.get("/", authenticate, boardController.listBoards);
 boardRouter.post("/", authenticate, validate(createBoardSchema), boardController.createBoard);
@@ -99,7 +115,14 @@ boardRouter.get("/:id/automations", authenticate, requireRole("admin", "owner")(
 
 boardRouter.post("/:id/automations", authenticate, requireRole("admin", "owner")(), validate(createAutomationSchema), async (req, res, next) => {
   try {
-    const rule = await automationService.createAutomationRule(req.params.id, req.body.label_id, req.body.target_column_id);
+    const rule = await automationService.createAutomationRule(req.params.id, {
+      triggerType: req.body.trigger_type,
+      triggerLabelId: req.body.trigger_label_id,
+      triggerColumnId: req.body.trigger_column_id,
+      addLabelIds: req.body.add_label_ids,
+      removeLabelIds: req.body.remove_label_ids,
+      targetColumnId: req.body.target_column_id,
+    });
     res.status(201).json(rule);
   } catch (err) { next(err); }
 });
@@ -107,6 +130,11 @@ boardRouter.post("/:id/automations", authenticate, requireRole("admin", "owner")
 boardRouter.patch("/:id/automations/:ruleId", authenticate, requireRole("admin", "owner")(), validate(updateAutomationSchema), async (req, res, next) => {
   try {
     const rule = await automationService.updateAutomationRule(req.params.ruleId, req.params.id, {
+      triggerType: req.body.trigger_type,
+      triggerLabelId: req.body.trigger_label_id,
+      triggerColumnId: req.body.trigger_column_id,
+      addLabelIds: req.body.add_label_ids,
+      removeLabelIds: req.body.remove_label_ids,
       targetColumnId: req.body.target_column_id,
       enabled: req.body.enabled,
     });

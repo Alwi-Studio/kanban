@@ -86,6 +86,7 @@ model Column {
   board             Board            @relation(fields: [boardId], references: [id])
   tasks             Task[]
   automationTargets AutomationRule[] @relation("AutomationTargetColumn")
+  automationTriggerColumns AutomationRule[] @relation("AutomationTriggerColumn")
 
   @@index([boardId, position])
   @@map("columns")
@@ -129,7 +130,7 @@ model Label {
   colorHex        String           @map("color_hex")
   board           Board            @relation(fields: [boardId], references: [id])
   tasks           TaskLabel[]
-  automationRules AutomationRule[]
+  automationTriggers AutomationRule[] @relation("AutomationTriggerLabel")
 
   @@map("labels")
 }
@@ -195,17 +196,22 @@ model Notification {
 }
 
 model AutomationRule {
-  id             String   @id @default(uuid())
-  boardId        String   @map("board_id")
-  labelId        String   @map("label_id")
-  targetColumnId String   @map("target_column_id")
-  enabled        Boolean  @default(true)
-  createdAt      DateTime @default(now()) @map("created_at")
-  board          Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
-  label          Label    @relation(fields: [labelId], references: [id], onDelete: Cascade)
-  targetColumn   Column   @relation("AutomationTargetColumn", fields: [targetColumnId], references: [id], onDelete: Cascade)
+  id              String   @id @default(uuid())
+  boardId         String   @map("board_id")
+  triggerType     String   @map("trigger_type") // TASK_CREATED|LABEL_ADDED|LABEL_REMOVED
+  triggerLabelId  String?  @map("trigger_label_id")
+  triggerColumnId String?  @map("trigger_column_id")
+  addLabelIds     String[] @default([]) @map("add_label_ids")
+  removeLabelIds  String[] @default([]) @map("remove_label_ids")
+  targetColumnId  String?  @map("target_column_id")
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+  board           Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  triggerLabel    Label?   @relation("AutomationTriggerLabel", fields: [triggerLabelId], references: [id], onDelete: Cascade)
+  triggerColumn   Column?  @relation("AutomationTriggerColumn", fields: [triggerColumnId], references: [id], onDelete: Cascade)
+  targetColumn    Column?  @relation("AutomationTargetColumn", fields: [targetColumnId], references: [id], onDelete: SetNull)
 
-  @@unique([boardId, labelId])
-  @@index([labelId, enabled])
+  @@index([boardId, enabled])
+  @@index([triggerType, enabled])
   @@map("automation_rules")
 }

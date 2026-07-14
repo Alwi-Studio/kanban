@@ -1,5 +1,5 @@
 import api from "./api";
-import type { Board, Column, Task, Comment, Attachment, Label, ActivityLog, NotificationsResponse, DashboardStats, GlobalBoardResponse, Workspace, AutomationRule, TransferTarget } from "../types";
+import type { Board, Column, Task, Comment, Attachment, Label, ActivityLog, NotificationsResponse, DashboardStats, GlobalBoardResponse, Workspace, AutomationRule, AutomationRuleInput, TransferTarget } from "../types";
 
 export async function getWorkspaces() {
   const { data } = await api.get("/workspaces");
@@ -125,12 +125,12 @@ export async function getAutomationRules(boardId: string) {
   return data as AutomationRule[];
 }
 
-export async function createAutomationRule(boardId: string, labelId: string, targetColumnId: string) {
-  const { data } = await api.post(`/boards/${boardId}/automations`, { label_id: labelId, target_column_id: targetColumnId });
+export async function createAutomationRule(boardId: string, input: AutomationRuleInput) {
+  const { data } = await api.post(`/boards/${boardId}/automations`, input);
   return data as AutomationRule;
 }
 
-export async function updateAutomationRule(boardId: string, ruleId: string, updates: { target_column_id?: string; enabled?: boolean }) {
+export async function updateAutomationRule(boardId: string, ruleId: string, updates: Partial<AutomationRuleInput> & { enabled?: boolean }) {
   const { data } = await api.patch(`/boards/${boardId}/automations/${ruleId}`, updates);
   return data as AutomationRule;
 }

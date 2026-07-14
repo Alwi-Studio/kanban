@@ -183,13 +183,29 @@ export interface AdminUser {
   memberships: AdminUserMembership[];
 }
 
+export type AutomationTriggerType = "TASK_CREATED" | "LABEL_ADDED" | "LABEL_REMOVED";
+
 export interface AutomationRule {
   id: string;
   boardId: string;
-  labelId: string;
-  targetColumnId: string;
+  triggerType: AutomationTriggerType;
+  triggerLabelId: string | null;
+  triggerColumnId: string | null;
+  addLabelIds: string[];
+  removeLabelIds: string[];
+  targetColumnId: string | null;
   enabled: boolean;
   createdAt: string;
-  label: Label;
-  targetColumn: Column;
+  triggerLabel: Label | null;
+  triggerColumn: Column | null;
+  targetColumn: Column | null;
+}
+
+export interface AutomationRuleInput {
+  trigger_type: AutomationTriggerType;
+  trigger_label_id?: string | null;
+  trigger_column_id?: string | null;
+  add_label_ids?: string[];
+  remove_label_ids?: string[];
+  target_column_id?: string | null;
 }

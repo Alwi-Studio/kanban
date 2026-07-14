@@ -13,7 +13,7 @@ import TaskCard from "../components/TaskCard/TaskCard";
 import TaskModal from "../components/TaskModal/TaskModal";
 import RoleBadge from "../components/ui/RoleBadge";
 import Layout from "../components/Layout/Layout";
-import type { Task, Column, Label, ActivityLog, BoardMember, AutomationRule, TransferTarget } from "../types";
+import type { Task, Column, Label, ActivityLog, BoardMember, AutomationRule, AutomationRuleInput, AutomationTriggerType, TransferTarget } from "../types";
 import { useAuthStore } from "../store/authStore";
 
 const tabs = [
@@ -25,6 +25,24 @@ const tabs = [
 function apiError(error: any, fallback: string) {
   return error?.response?.data?.error || fallback;
 }
+
+interface AutomationFormState {
+  triggerType: AutomationTriggerType;
+  triggerLabelId: string;
+  triggerColumnId: string;
+  addLabelIds: string[];
+  removeLabelIds: string[];
+  targetColumnId: string;
+}
+
+const emptyAutomationForm: AutomationFormState = {
+  triggerType: "LABEL_ADDED",
+  triggerLabelId: "",
+  triggerColumnId: "",
+  addLabelIds: [],
+  removeLabelIds: [],
+  targetColumnId: "",
+};
 
 export default function BoardPage() {
   const { id } = useParams<{ id: string }>();
@@ -53,8 +71,7 @@ export default function BoardPage() {
   const [showNewLabel, setShowNewLabel] = useState(false);
   const [showAutomation, setShowAutomation] = useState(false);
   const [automationRules, setAutomationRules] = useState<AutomationRule[]>([]);
-  const [automationLabelId, setAutomationLabelId] = useState("");
-  const [automationColumnId, setAutomationColumnId] = useState("");
+  const [automationForm, setAutomationForm] = useState<AutomationFormState>(emptyAutomationForm);
   const [newLabelName, setNewLabelName] = useState("");
   const [newLabelColor, setNewLabelColor] = useState("#6C4EF5");
   const [newTaskTitles, setNewTaskTitles] = useState<Record<string, string>>({});
@@ -316,21 +333,42 @@ export default function BoardPage() {
     if (!id || !board) return;
     setShowAutomation(true);
     setShowNewLabel(false);
-    setAutomationColumnId(board.columns[0]?.id || "");
+    setAutomationForm(emptyAutomationForm);
     try {
       const rules = await getAutomationRules(id);
       setAutomationRules(rules);
-      setAutomationLabelId(board.labels?.find(label => !rules.some(rule => rule.labelId === label.id))?.id || "");
     }
     catch (error: any) { toast(apiError(error, "Failed to load automations"), "error"); }
   };
 
+  const toggleAutomationLabel = (field: "addLabelIds" | "removeLabelIds", labelId: string) => {
+    setAutomationForm(form => {
+      const has = form[field].includes(labelId);
+      return { ...form, [field]: has ? form[field].filter(item => item !== labelId) : [...form[field], labelId] };
+    });
+  };
+
   const handleCreateAutomation = async () => {
-    if (!id || !automationLabelId || !automationColumnId) return;
+    if (!id) return;
+    const form = automationForm;
+    const triggerOk = form.triggerType === "TASK_CREATED" ? !!form.triggerColumnId : !!form.triggerLabelId;
+    const hasAction = form.addLabelIds.length > 0 || form.removeLabelIds.length > 0 || !!form.targetColumnId;
+    if (!triggerOk || !hasAction) {
+      toast("Pick a trigger and at least one action", "error");
+      return;
+    }
+    const input: AutomationRuleInput = {
+      trigger_type: form.triggerType,
+      trigger_label_id: form.triggerType === "TASK_CREATED" ? null : form.triggerLabelId,
+      trigger_column_id: form.triggerType === "TASK_CREATED" ? form.triggerColumnId : null,
+      add_label_ids: form.addLabelIds,
+      remove_label_ids: form.removeLabelIds,
+      target_column_id: form.targetColumnId || null,
+    };
     try {
-      const rule = await createAutomationRule(id, automationLabelId, automationColumnId);
+      const rule = await createAutomationRule(id, input);
       setAutomationRules(current => [...current, rule]);
-      setAutomationLabelId(board?.labels?.find(label => label.id !== automationLabelId && !automationRules.some(existing => existing.labelId === label.id))?.id || "");
+      setAutomationForm(emptyAutomationForm);
       toast("Automation enabled", "success");
     } catch (error: any) { toast(apiError(error, "Failed to create automation"), "error"); }
   };
@@ -836,32 +874,82 @@ export default function BoardPage() {
             <div className="flex items-center gap-2"><Zap size={15} className="text-amber-500" /><h3 className="text-sm font-semibold">Automation</h3></div>
             <button onClick={() => setShowAutomation(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"><X size={14} /></button>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">Move a task automatically when a label is added.</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">Automatically add or remove labels and move tasks when something happens.</p>
 
-          <div className="rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 p-3 space-y-2">
-            <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400">When label is added</label>
-            <select value={automationLabelId} onChange={event => setAutomationLabelId(event.target.value)} className="input text-xs">
-              <option value="">Choose a label</option>
-              {board.labels?.filter(label => !automationRules.some(rule => rule.labelId === label.id)).map(label => <option key={label.id} value={label.id}>{label.name}</option>)}
-            </select>
-            <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400">Move task to</label>
-            <select value={automationColumnId} onChange={event => setAutomationColumnId(event.target.value)} className="input text-xs">
-              <option value="">Choose a column</option>
-              {board.columns.map(column => <option key={column.id} value={column.id}>{column.name}</option>)}
-            </select>
-            <button onClick={handleCreateAutomation} disabled={!automationLabelId || !automationColumnId} className="btn-primary text-xs w-full"><Zap size={13} /> Add rule</button>
+          <div className="rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 p-3 space-y-3">
+            <div className="space-y-1.5">
+              <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400">When</label>
+              <select value={automationForm.triggerType} onChange={event => setAutomationForm(form => ({ ...form, triggerType: event.target.value as AutomationTriggerType }))} className="input text-xs">
+                <option value="TASK_CREATED">Task is created in column</option>
+                <option value="LABEL_ADDED">Label is added</option>
+                <option value="LABEL_REMOVED">Label is removed</option>
+              </select>
+              {automationForm.triggerType === "TASK_CREATED" ? (
+                <select value={automationForm.triggerColumnId} onChange={event => setAutomationForm(form => ({ ...form, triggerColumnId: event.target.value }))} className="input text-xs">
+                  <option value="">Choose a column</option>
+                  {board.columns.map(column => <option key={column.id} value={column.id}>{column.name}</option>)}
+                </select>
+              ) : (
+                <select value={automationForm.triggerLabelId} onChange={event => setAutomationForm(form => ({ ...form, triggerLabelId: event.target.value }))} className="input text-xs">
+                  <option value="">Choose a label</option>
+                  {board.labels?.map(label => <option key={label.id} value={label.id}>{label.name}</option>)}
+                </select>
+              )}
+            </div>
+
+            <div className="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-2">
+              <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400">Then add labels</label>
+              <div className="flex flex-wrap gap-1.5">
+                {board.labels?.length ? board.labels.map(label => {
+                  const active = automationForm.addLabelIds.includes(label.id);
+                  return <button key={label.id} type="button" onClick={() => toggleAutomationLabel("addLabelIds", label.id)} className={`text-[11px] px-2 py-0.5 rounded-full border transition ${active ? "text-white border-transparent" : "text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-gray-400"}`} style={active ? { backgroundColor: label.colorHex } : undefined}>{label.name}</button>;
+                }) : <span className="text-[11px] text-gray-400">No labels yet</span>}
+              </div>
+
+              <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400">Remove labels</label>
+              <div className="flex flex-wrap gap-1.5">
+                {board.labels?.length ? board.labels.map(label => {
+                  const active = automationForm.removeLabelIds.includes(label.id);
+                  return <button key={label.id} type="button" onClick={() => toggleAutomationLabel("removeLabelIds", label.id)} className={`text-[11px] px-2 py-0.5 rounded-full border transition ${active ? "bg-red-500 text-white border-transparent line-through" : "text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-gray-400"}`}>{label.name}</button>;
+                }) : <span className="text-[11px] text-gray-400">No labels yet</span>}
+              </div>
+
+              <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400">Move task to</label>
+              <select value={automationForm.targetColumnId} onChange={event => setAutomationForm(form => ({ ...form, targetColumnId: event.target.value }))} className="input text-xs">
+                <option value="">No move</option>
+                {board.columns.map(column => <option key={column.id} value={column.id}>{column.name}</option>)}
+              </select>
+            </div>
+
+            <button onClick={handleCreateAutomation} className="btn-primary text-xs w-full"><Zap size={13} /> Add rule</button>
           </div>
 
           <div className="mt-4 space-y-2">
-            {automationRules.map(rule => (
-              <div key={rule.id} className={`rounded-xl border p-3 ${rule.enabled ? "border-amber-200 dark:border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/5" : "border-gray-200 dark:border-gray-700 opacity-60"}`}>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="text-xs leading-5"><span className="font-semibold" style={{ color: rule.label.colorHex }}>{rule.label.name}</span><span className="text-gray-400"> → </span><span className="font-semibold text-gray-700 dark:text-gray-200">{rule.targetColumn.name}</span></div>
-                  <button onClick={() => handleDeleteAutomation(rule.id)} className="text-gray-400 hover:text-red-500" aria-label="Delete automation"><X size={13} /></button>
+            {automationRules.map(rule => {
+              const triggerText = rule.triggerType === "TASK_CREATED"
+                ? `Task created in ${rule.triggerColumn?.name ?? "?"}`
+                : `${rule.triggerLabel?.name ?? "?"} ${rule.triggerType === "LABEL_ADDED" ? "added" : "removed"}`;
+              return (
+                <div key={rule.id} className={`rounded-xl border p-3 ${rule.enabled ? "border-amber-200 dark:border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/5" : "border-gray-200 dark:border-gray-700 opacity-60"}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="text-xs leading-5"><span className="text-gray-400">When </span><span className="font-semibold text-gray-700 dark:text-gray-200">{triggerText}</span></div>
+                    <button onClick={() => handleDeleteAutomation(rule.id)} className="text-gray-400 hover:text-red-500" aria-label="Delete automation"><X size={13} /></button>
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    {rule.addLabelIds.map(labelId => {
+                      const label = board.labels?.find(item => item.id === labelId);
+                      return label ? <span key={`a-${labelId}`} className="text-[10px] px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: label.colorHex }}>+ {label.name}</span> : null;
+                    })}
+                    {rule.removeLabelIds.map(labelId => {
+                      const label = board.labels?.find(item => item.id === labelId);
+                      return label ? <span key={`r-${labelId}`} className="text-[10px] px-1.5 py-0.5 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 line-through">− {label.name}</span> : null;
+                    })}
+                    {rule.targetColumn && <span className="text-[10px] text-gray-500 dark:text-gray-400">→ {rule.targetColumn.name}</span>}
+                  </div>
+                  <button onClick={() => handleToggleAutomation(rule)} className={`mt-2 text-[10px] font-semibold ${rule.enabled ? "text-emerald-600 dark:text-emerald-400" : "text-gray-500"}`}>{rule.enabled ? "Enabled" : "Disabled"} · click to toggle</button>
                 </div>
-                <button onClick={() => handleToggleAutomation(rule)} className={`mt-2 text-[10px] font-semibold ${rule.enabled ? "text-emerald-600 dark:text-emerald-400" : "text-gray-500"}`}>{rule.enabled ? "Enabled" : "Disabled"} · click to toggle</button>
-              </div>
-            ))}
+              );
+            })}
             {automationRules.length === 0 && <p className="text-xs text-gray-400 text-center py-5">No automation rules yet.</p>}
           </div>
         </div>
