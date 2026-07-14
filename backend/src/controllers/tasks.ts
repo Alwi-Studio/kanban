@@ -6,7 +6,7 @@ import { emitBoardEvent } from "../sockets";
 import { createLog } from "../services/activityLog";
 import { createNotification } from "../services/notification";
 import { getUploadedFileUrl } from "../middlewares/upload";
-import { applyAutomation, AutomationResult } from "../services/automation";
+import { applyAutomation, AutomationResult, AutomationTrigger } from "../services/automation";
 
 // Emit socket events + activity log for actions performed by an automation rule.
 async function emitAutomationResult(
@@ -17,12 +17,16 @@ async function emitAutomationResult(
 ) {
   emitBoardEvent(boardId, "board:refresh", { boardId });
   await emitTaskSnapshot(taskId);
-  if (!userId) return;
-  const parts: string[] = [];
-  if (result.addedLabelIds.length) parts.push(`added ${result.addedLabelIds.length} label(s)`);
-  if (result.removedLabelIds.length) parts.push(`removed ${result.removedLabelIds.length} label(s)`);
-  if (result.movedToColumn) parts.push(`moved task to "${result.movedToColumn.name}"`);
-  if (parts.length) await createLog(boardId, userId, `Automation ${parts.join(", ")}`);
+  if (userId && result.summary.length) {
+    await createLog(boardId, userId, `Automation ${result.summary.join(", ")}`);
+  }
+}
+
+// Run automation for a trigger, then emit the resulting changes (if any).
+async function runAutomation(boardId: string | undefined, taskId: string, trigger: AutomationTrigger, userId?: string) {
+  const result = await applyAutomation(taskId, trigger, userId);
+  if (result && boardId) await emitAutomationResult(boardId, taskId, userId, result);
+  return result;
 }
 
 async function emitTaskSnapshot(taskId: string) {
@@ -49,10 +53,7 @@ export async function createTask(req: Request, res: Response, next: NextFunction
       await createLog(col.boardId, req.user.userId, `Added task "${title}" to ${col.name}`);
     }
     if (col) emitBoardEvent(col.boardId, "task:created", task);
-    if (col) {
-      const automation = await applyAutomation(task.id, { type: "TASK_CREATED", columnId: req.params.id });
-      if (automation) await emitAutomationResult(col.boardId, task.id, req.user?.userId, automation);
-    }
+    if (col) await runAutomation(col.boardId, task.id, { type: "TASK_CREATED", columnId: req.params.id }, req.user?.userId);
     res.status(201).json(task);
   } catch (err) { next(err); }
 }
@@ -79,6 +80,12 @@ export async function updateTask(req: Request, res: Response, next: NextFunction
     }
     if (col) emitBoardEvent(col.boardId, "task:updated", task);
     if (column_id || position !== undefined) emitBoardEvent(col!.boardId, "board:refresh", { boardId: col!.boardId });
+    if (col && column_id && column_id !== oldTask?.columnId) {
+      await runAutomation(col.boardId, task.id, { type: "TASK_MOVED", columnId: task.columnId }, req.user?.userId);
+      if (!oldTask?.completedAt && task.completedAt) {
+        await runAutomation(col.boardId, task.id, { type: "TASK_COMPLETED" }, req.user?.userId);
+      }
+    }
     res.json(task);
   } catch (err) { next(err); }
 }
@@ -107,6 +114,7 @@ export async function addAssignee(req: Request, res: Response, next: NextFunctio
     const boardId = await taskDetailsService.getTaskBoards(req.params.id);
     if (boardId) emitBoardEvent(boardId, "task:assignee:added", assignee);
     await emitTaskSnapshot(req.params.id);
+    await runAutomation(boardId, req.params.id, { type: "ASSIGNEE_ADDED" }, req.user?.userId);
     res.status(201).json(assignee);
   } catch (err) { next(err); }
 }
@@ -117,6 +125,7 @@ export async function removeAssignee(req: Request, res: Response, next: NextFunc
     const boardId = await taskDetailsService.getTaskBoards(req.params.id);
     if (boardId) emitBoardEvent(boardId, "task:assignee:removed", { taskId: req.params.id, userId: req.params.userId });
     await emitTaskSnapshot(req.params.id);
+    await runAutomation(boardId, req.params.id, { type: "ASSIGNEE_REMOVED" }, req.user?.userId);
     res.json({ message: "ok" });
   } catch (err) { next(err); }
 }
@@ -176,7 +185,7 @@ export async function addLabelToTask(req: Request, res: Response, next: NextFunc
     const tl = await taskDetailsService.addLabelToTask(req.params.id, req.params.labelId);
     const boardId = await taskDetailsService.getTaskBoards(req.params.id);
     if (boardId) emitBoardEvent(boardId, "task:label:added", tl);
-    const automation = await applyAutomation(req.params.id, { type: "LABEL_ADDED", labelId: req.params.labelId });
+    const automation = await applyAutomation(req.params.id, { type: "LABEL_ADDED", labelId: req.params.labelId }, req.user?.userId);
     if (automation && boardId) {
       await emitAutomationResult(boardId, req.params.id, req.user?.userId, automation);
     } else {
@@ -191,7 +200,7 @@ export async function removeLabelFromTask(req: Request, res: Response, next: Nex
     await taskDetailsService.removeLabelFromTask(req.params.id, req.params.labelId);
     const boardId = await taskDetailsService.getTaskBoards(req.params.id);
     if (boardId) emitBoardEvent(boardId, "task:label:removed", { taskId: req.params.id, labelId: req.params.labelId });
-    const automation = await applyAutomation(req.params.id, { type: "LABEL_REMOVED", labelId: req.params.labelId });
+    const automation = await applyAutomation(req.params.id, { type: "LABEL_REMOVED", labelId: req.params.labelId }, req.user?.userId);
     if (automation && boardId) {
       await emitAutomationResult(boardId, req.params.id, req.user?.userId, automation);
     } else {

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable";
-import { Plus, Filter, List, ListTodo, X, Users, Tag, Share2, Search, Upload, ArrowUpDown, Eye, MessageSquare, Zap, Globe, ArrowRightLeft } from "lucide-react";
+import { Plus, Filter, List, ListTodo, X, Users, Tag, Share2, Search, Upload, ArrowUpDown, Eye, MessageSquare, Zap, Globe, ArrowRightLeft, Pencil, Copy } from "lucide-react";
 import { useBoardStore } from "../store/boardStore";
 import { getBoard, createColumn, deleteColumn, updateColumn, updateTask, createTask, deleteTask, createLabel, deleteLabel, getActivityLogs, inviteMember, updateMemberRole, removeMember, updateBoard, deleteBoard, getAutomationRules, createAutomationRule, updateAutomationRule, deleteAutomationRule, getTransferTargets, transferBoard } from "../services/board";
 import { connectSocket, joinBoard, leaveBoard } from "../services/socket";
@@ -13,7 +13,7 @@ import TaskCard from "../components/TaskCard/TaskCard";
 import TaskModal from "../components/TaskModal/TaskModal";
 import RoleBadge from "../components/ui/RoleBadge";
 import Layout from "../components/Layout/Layout";
-import type { Task, Column, Label, ActivityLog, BoardMember, AutomationRule, AutomationRuleInput, AutomationTriggerType, TransferTarget } from "../types";
+import type { Task, Column, Label, ActivityLog, BoardMember, AutomationRule, AutomationRuleInput, AutomationTriggerType, AutomationCondition, AutomationAction, AutomationConditionType, AutomationActionType, TransferTarget } from "../types";
 import { useAuthStore } from "../store/authStore";
 
 const tabs = [
@@ -27,22 +27,159 @@ function apiError(error: any, fallback: string) {
 }
 
 interface AutomationFormState {
+  name: string;
   triggerType: AutomationTriggerType;
   triggerLabelId: string;
   triggerColumnId: string;
-  addLabelIds: string[];
-  removeLabelIds: string[];
-  targetColumnId: string;
+  conditions: AutomationCondition[];
+  actions: AutomationAction[];
 }
 
 const emptyAutomationForm: AutomationFormState = {
+  name: "",
   triggerType: "LABEL_ADDED",
   triggerLabelId: "",
   triggerColumnId: "",
-  addLabelIds: [],
-  removeLabelIds: [],
-  targetColumnId: "",
+  conditions: [],
+  actions: [],
 };
+
+const TRIGGER_LABELS: Record<AutomationTriggerType, string> = {
+  TASK_CREATED: "Task created in column",
+  TASK_MOVED: "Task moved to column",
+  LABEL_ADDED: "Label added",
+  LABEL_REMOVED: "Label removed",
+  ASSIGNEE_ADDED: "Assignee added",
+  ASSIGNEE_REMOVED: "Assignee removed",
+  TASK_COMPLETED: "Task marked complete",
+};
+
+const CONDITION_LABELS: Record<AutomationConditionType, string> = {
+  HAS_LABEL: "Has label",
+  NOT_HAS_LABEL: "Does not have label",
+  IN_COLUMN: "Is in column",
+  HAS_ANY_ASSIGNEE: "Has any assignee",
+  HAS_ASSIGNEE: "Has specific assignee",
+  NO_ASSIGNEE: "Has no assignee",
+  TITLE_CONTAINS: "Title contains",
+};
+
+const ACTION_LABELS: Record<AutomationActionType, string> = {
+  ADD_LABELS: "Add labels",
+  REMOVE_LABELS: "Remove labels",
+  MOVE_TO_COLUMN: "Move to column",
+  ASSIGN_MEMBERS: "Assign members",
+  UNASSIGN_MEMBERS: "Unassign members",
+  SET_DUE_DATE: "Set due date",
+  CLEAR_DUE_DATE: "Clear due date",
+  ADD_COMMENT: "Add comment",
+  NOTIFY: "Notify",
+  MARK_COMPLETE: "Mark complete",
+};
+
+const CONDITION_TYPES = Object.keys(CONDITION_LABELS) as AutomationConditionType[];
+const ACTION_TYPES = Object.keys(ACTION_LABELS) as AutomationActionType[];
+
+interface BoardLike { labels?: Label[]; columns: Column[]; members?: BoardMember[]; }
+const labelName = (board: BoardLike, id: string) => board.labels?.find(l => l.id === id)?.name ?? "?";
+const columnName = (board: BoardLike, id: string) => board.columns.find(c => c.id === id)?.name ?? "?";
+const memberName = (board: BoardLike, id: string) => board.members?.find(m => m.userId === id)?.user.name ?? "?";
+
+function describeCondition(c: AutomationCondition, board: BoardLike): string {
+  switch (c.type) {
+    case "HAS_LABEL": return `has "${labelName(board, c.labelId)}"`;
+    case "NOT_HAS_LABEL": return `not "${labelName(board, c.labelId)}"`;
+    case "IN_COLUMN": return `in "${columnName(board, c.columnId)}"`;
+    case "HAS_ANY_ASSIGNEE": return "has any assignee";
+    case "HAS_ASSIGNEE": return `assigned to ${memberName(board, c.userId)}`;
+    case "NO_ASSIGNEE": return "has no assignee";
+    case "TITLE_CONTAINS": return `title ~ "${c.text}"`;
+  }
+}
+
+function describeAction(a: AutomationAction, board: BoardLike): string {
+  switch (a.type) {
+    case "ADD_LABELS": return `+ ${a.labelIds.map(id => labelName(board, id)).join(", ")}`;
+    case "REMOVE_LABELS": return `− ${a.labelIds.map(id => labelName(board, id)).join(", ")}`;
+    case "MOVE_TO_COLUMN": return `→ "${columnName(board, a.columnId)}"`;
+    case "ASSIGN_MEMBERS": return `assign ${a.userIds.map(id => memberName(board, id)).join(", ")}`;
+    case "UNASSIGN_MEMBERS": return `unassign ${a.userIds.map(id => memberName(board, id)).join(", ")}`;
+    case "SET_DUE_DATE": return `due +${a.offsetDays}d`;
+    case "CLEAR_DUE_DATE": return "clear due date";
+    case "ADD_COMMENT": return `comment "${a.text}"`;
+    case "NOTIFY": return `notify ${a.target}`;
+    case "MARK_COMPLETE": return "mark complete";
+  }
+}
+
+function defaultCondition(type: AutomationConditionType): AutomationCondition {
+  switch (type) {
+    case "HAS_LABEL": return { type, labelId: "" };
+    case "NOT_HAS_LABEL": return { type, labelId: "" };
+    case "IN_COLUMN": return { type, columnId: "" };
+    case "HAS_ASSIGNEE": return { type, userId: "" };
+    case "TITLE_CONTAINS": return { type, text: "" };
+    default: return { type } as AutomationCondition;
+  }
+}
+
+function defaultAction(type: AutomationActionType): AutomationAction {
+  switch (type) {
+    case "ADD_LABELS": return { type, labelIds: [] };
+    case "REMOVE_LABELS": return { type, labelIds: [] };
+    case "MOVE_TO_COLUMN": return { type, columnId: "" };
+    case "ASSIGN_MEMBERS": return { type, userIds: [] };
+    case "UNASSIGN_MEMBERS": return { type, userIds: [] };
+    case "SET_DUE_DATE": return { type, offsetDays: 1 };
+    case "ADD_COMMENT": return { type, text: "" };
+    case "NOTIFY": return { type, target: "assignees", message: "" };
+    default: return { type } as AutomationAction;
+  }
+}
+
+function ruleToForm(rule: AutomationRule): AutomationFormState {
+  return {
+    name: rule.name ?? "",
+    triggerType: rule.triggerType,
+    triggerLabelId: rule.triggerLabelId ?? "",
+    triggerColumnId: rule.triggerColumnId ?? "",
+    conditions: rule.conditions,
+    actions: rule.actions,
+  };
+}
+
+function formToInput(form: AutomationFormState): AutomationRuleInput {
+  const columnTrigger = form.triggerType === "TASK_CREATED" || form.triggerType === "TASK_MOVED";
+  const labelTrigger = form.triggerType === "LABEL_ADDED" || form.triggerType === "LABEL_REMOVED";
+  return {
+    trigger_type: form.triggerType,
+    trigger_label_id: labelTrigger ? form.triggerLabelId : null,
+    trigger_column_id: columnTrigger ? form.triggerColumnId : null,
+    name: form.name.trim() || null,
+    conditions: form.conditions,
+    actions: form.actions,
+  };
+}
+
+// Validate a rule form before sending: trigger param present + every action fully filled.
+function automationFormValid(form: AutomationFormState): boolean {
+  const t = form.triggerType;
+  if ((t === "TASK_CREATED" || t === "TASK_MOVED") && !form.triggerColumnId) return false;
+  if ((t === "LABEL_ADDED" || t === "LABEL_REMOVED") && !form.triggerLabelId) return false;
+  if (!form.actions.length) return false;
+  const condOk = form.conditions.every(c =>
+    ("labelId" in c ? !!c.labelId : true) &&
+    ("columnId" in c ? !!c.columnId : true) &&
+    ("userId" in c ? !!c.userId : true) &&
+    ("text" in c ? !!c.text.trim() : true));
+  const actOk = form.actions.every(a =>
+    ("labelIds" in a ? a.labelIds.length > 0 : true) &&
+    ("userIds" in a ? a.userIds.length > 0 : true) &&
+    ("columnId" in a ? !!a.columnId : true) &&
+    ("text" in a ? !!a.text.trim() : true) &&
+    ("message" in a ? !!a.message.trim() : true));
+  return condOk && actOk;
+}
 
 export default function BoardPage() {
   const { id } = useParams<{ id: string }>();
@@ -72,6 +209,7 @@ export default function BoardPage() {
   const [showAutomation, setShowAutomation] = useState(false);
   const [automationRules, setAutomationRules] = useState<AutomationRule[]>([]);
   const [automationForm, setAutomationForm] = useState<AutomationFormState>(emptyAutomationForm);
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [newLabelName, setNewLabelName] = useState("");
   const [newLabelColor, setNewLabelColor] = useState("#6C4EF5");
   const [newTaskTitles, setNewTaskTitles] = useState<Record<string, string>>({});
@@ -334,6 +472,7 @@ export default function BoardPage() {
     setShowAutomation(true);
     setShowNewLabel(false);
     setAutomationForm(emptyAutomationForm);
+    setEditingRuleId(null);
     try {
       const rules = await getAutomationRules(id);
       setAutomationRules(rules);
@@ -341,36 +480,74 @@ export default function BoardPage() {
     catch (error: any) { toast(apiError(error, "Failed to load automations"), "error"); }
   };
 
-  const toggleAutomationLabel = (field: "addLabelIds" | "removeLabelIds", labelId: string) => {
-    setAutomationForm(form => {
-      const has = form[field].includes(labelId);
-      return { ...form, [field]: has ? form[field].filter(item => item !== labelId) : [...form[field], labelId] };
-    });
+  const setCondition = (index: number, next: AutomationCondition) =>
+    setAutomationForm(form => ({ ...form, conditions: form.conditions.map((c, i) => i === index ? next : c) }));
+  const removeCondition = (index: number) =>
+    setAutomationForm(form => ({ ...form, conditions: form.conditions.filter((_, i) => i !== index) }));
+  const addCondition = () =>
+    setAutomationForm(form => ({ ...form, conditions: [...form.conditions, defaultCondition("HAS_LABEL")] }));
+
+  const setAction = (index: number, next: AutomationAction) =>
+    setAutomationForm(form => ({ ...form, actions: form.actions.map((a, i) => i === index ? next : a) }));
+  const removeAction = (index: number) =>
+    setAutomationForm(form => ({ ...form, actions: form.actions.filter((_, i) => i !== index) }));
+  const addAction = () =>
+    setAutomationForm(form => ({ ...form, actions: [...form.actions, defaultAction("ADD_LABELS")] }));
+
+  // Toggle a value inside an ADD_LABELS/REMOVE_LABELS/ASSIGN/UNASSIGN action's id array.
+  const toggleActionId = (index: number, field: "labelIds" | "userIds", value: string) =>
+    setAutomationForm(form => ({
+      ...form,
+      actions: form.actions.map((a, i) => {
+        if (i !== index || !(field in a)) return a;
+        const arr = (a as any)[field] as string[];
+        const nextArr = arr.includes(value) ? arr.filter(x => x !== value) : [...arr, value];
+        return { ...a, [field]: nextArr };
+      }),
+    }));
+
+  const startEditAutomation = (rule: AutomationRule) => {
+    setEditingRuleId(rule.id);
+    setAutomationForm(ruleToForm(rule));
   };
 
-  const handleCreateAutomation = async () => {
+  const cancelEditAutomation = () => {
+    setEditingRuleId(null);
+    setAutomationForm(emptyAutomationForm);
+  };
+
+  const handleSaveAutomation = async () => {
     if (!id) return;
     const form = automationForm;
-    const triggerOk = form.triggerType === "TASK_CREATED" ? !!form.triggerColumnId : !!form.triggerLabelId;
-    const hasAction = form.addLabelIds.length > 0 || form.removeLabelIds.length > 0 || !!form.targetColumnId;
-    if (!triggerOk || !hasAction) {
-      toast("Pick a trigger and at least one action", "error");
+    if (!automationFormValid(form)) {
+      toast("Fill in the trigger and every condition/action", "error");
       return;
     }
-    const input: AutomationRuleInput = {
-      trigger_type: form.triggerType,
-      trigger_label_id: form.triggerType === "TASK_CREATED" ? null : form.triggerLabelId,
-      trigger_column_id: form.triggerType === "TASK_CREATED" ? form.triggerColumnId : null,
-      add_label_ids: form.addLabelIds,
-      remove_label_ids: form.removeLabelIds,
-      target_column_id: form.targetColumnId || null,
-    };
+    const input = formToInput(form);
     try {
-      const rule = await createAutomationRule(id, input);
-      setAutomationRules(current => [...current, rule]);
+      if (editingRuleId) {
+        const updated = await updateAutomationRule(id, editingRuleId, input);
+        setAutomationRules(current => current.map(r => r.id === editingRuleId ? updated : r));
+        toast("Rule updated", "success");
+      } else {
+        const rule = await createAutomationRule(id, input);
+        setAutomationRules(current => [...current, rule]);
+        toast("Automation enabled", "success");
+      }
       setAutomationForm(emptyAutomationForm);
-      toast("Automation enabled", "success");
-    } catch (error: any) { toast(apiError(error, "Failed to create automation"), "error"); }
+      setEditingRuleId(null);
+    } catch (error: any) { toast(apiError(error, "Failed to save automation"), "error"); }
+  };
+
+  const handleDuplicateAutomation = async (rule: AutomationRule) => {
+    if (!id) return;
+    const input = formToInput(ruleToForm(rule));
+    input.name = `${rule.name ?? "Rule"} (copy)`.slice(0, 100);
+    try {
+      const created = await createAutomationRule(id, input);
+      setAutomationRules(current => [...current, created]);
+      toast("Rule duplicated", "success");
+    } catch (error: any) { toast(apiError(error, "Failed to duplicate rule"), "error"); }
   };
 
   const handleToggleAutomation = async (rule: AutomationRule) => {
@@ -384,6 +561,7 @@ export default function BoardPage() {
     try {
       await deleteAutomationRule(id!, ruleId);
       setAutomationRules(current => current.filter(rule => rule.id !== ruleId));
+      if (editingRuleId === ruleId) cancelEditAutomation();
       toast("Automation removed", "success");
     } catch (error: any) { toast(apiError(error, "Failed to remove automation"), "error"); }
   };
@@ -874,77 +1052,174 @@ export default function BoardPage() {
             <div className="flex items-center gap-2"><Zap size={15} className="text-amber-500" /><h3 className="text-sm font-semibold">Automation</h3></div>
             <button onClick={() => setShowAutomation(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400"><X size={14} /></button>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">Automatically add or remove labels and move tasks when something happens.</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">Build custom rules: when something happens, optionally check conditions, then run any actions.</p>
 
-          <div className="rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 p-3 space-y-3">
-            <div className="space-y-1.5">
-              <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400">When</label>
-              <select value={automationForm.triggerType} onChange={event => setAutomationForm(form => ({ ...form, triggerType: event.target.value as AutomationTriggerType }))} className="input text-xs">
-                <option value="TASK_CREATED">Task is created in column</option>
-                <option value="LABEL_ADDED">Label is added</option>
-                <option value="LABEL_REMOVED">Label is removed</option>
-              </select>
-              {automationForm.triggerType === "TASK_CREATED" ? (
-                <select value={automationForm.triggerColumnId} onChange={event => setAutomationForm(form => ({ ...form, triggerColumnId: event.target.value }))} className="input text-xs">
-                  <option value="">Choose a column</option>
-                  {board.columns.map(column => <option key={column.id} value={column.id}>{column.name}</option>)}
-                </select>
-              ) : (
-                <select value={automationForm.triggerLabelId} onChange={event => setAutomationForm(form => ({ ...form, triggerLabelId: event.target.value }))} className="input text-xs">
-                  <option value="">Choose a label</option>
-                  {board.labels?.map(label => <option key={label.id} value={label.id}>{label.name}</option>)}
-                </select>
-              )}
-            </div>
+          {(() => {
+            const form = automationForm;
+            const columnTrigger = form.triggerType === "TASK_CREATED" || form.triggerType === "TASK_MOVED";
+            const labelTrigger = form.triggerType === "LABEL_ADDED" || form.triggerType === "LABEL_REMOVED";
+            const members = board.members ?? [];
+            return (
+              <div className={`rounded-xl border p-3 space-y-3 ${editingRuleId ? "bg-[#6C4EF5]/5 border-[#6C4EF5]/40" : "bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700"}`}>
+                {editingRuleId && <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#6C4EF5]"><Pencil size={11} /> Editing rule</div>}
+                <input value={form.name} onChange={event => setAutomationForm(f => ({ ...f, name: event.target.value }))} placeholder="Rule name (optional)" className="input text-xs" />
 
-            <div className="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-2">
-              <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400">Then add labels</label>
-              <div className="flex flex-wrap gap-1.5">
-                {board.labels?.length ? board.labels.map(label => {
-                  const active = automationForm.addLabelIds.includes(label.id);
-                  return <button key={label.id} type="button" onClick={() => toggleAutomationLabel("addLabelIds", label.id)} className={`text-[11px] px-2 py-0.5 rounded-full border transition ${active ? "text-white border-transparent" : "text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-gray-400"}`} style={active ? { backgroundColor: label.colorHex } : undefined}>{label.name}</button>;
-                }) : <span className="text-[11px] text-gray-400">No labels yet</span>}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400">When</label>
+                  <select value={form.triggerType} onChange={event => setAutomationForm(f => ({ ...f, triggerType: event.target.value as AutomationTriggerType }))} className="input text-xs">
+                    {(Object.keys(TRIGGER_LABELS) as AutomationTriggerType[]).map(t => <option key={t} value={t}>{TRIGGER_LABELS[t]}</option>)}
+                  </select>
+                  {columnTrigger && (
+                    <select value={form.triggerColumnId} onChange={event => setAutomationForm(f => ({ ...f, triggerColumnId: event.target.value }))} className="input text-xs">
+                      <option value="">Choose a column</option>
+                      {board.columns.map(column => <option key={column.id} value={column.id}>{column.name}</option>)}
+                    </select>
+                  )}
+                  {labelTrigger && (
+                    <select value={form.triggerLabelId} onChange={event => setAutomationForm(f => ({ ...f, triggerLabelId: event.target.value }))} className="input text-xs">
+                      <option value="">Choose a label</option>
+                      {board.labels?.map(label => <option key={label.id} value={label.id}>{label.name}</option>)}
+                    </select>
+                  )}
+                </div>
+
+                {/* Conditions */}
+                <div className="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Only if (all match)</label>
+                    <button type="button" onClick={addCondition} className="flex items-center gap-1 text-[10px] font-semibold text-[#6C4EF5] hover:underline"><Plus size={11} /> Condition</button>
+                  </div>
+                  {form.conditions.map((c, i) => (
+                    <div key={i} className="rounded-lg bg-white dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 p-2 space-y-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <select value={c.type} onChange={event => setCondition(i, defaultCondition(event.target.value as AutomationConditionType))} className="input text-xs flex-1">
+                          {CONDITION_TYPES.map(t => <option key={t} value={t}>{CONDITION_LABELS[t]}</option>)}
+                        </select>
+                        <button type="button" onClick={() => removeCondition(i)} className="text-gray-400 hover:text-red-500 p-1"><X size={13} /></button>
+                      </div>
+                      {(c.type === "HAS_LABEL" || c.type === "NOT_HAS_LABEL") && (
+                        <select value={c.labelId} onChange={event => setCondition(i, { ...c, labelId: event.target.value })} className="input text-xs">
+                          <option value="">Choose a label</option>
+                          {board.labels?.map(label => <option key={label.id} value={label.id}>{label.name}</option>)}
+                        </select>
+                      )}
+                      {c.type === "IN_COLUMN" && (
+                        <select value={c.columnId} onChange={event => setCondition(i, { ...c, columnId: event.target.value })} className="input text-xs">
+                          <option value="">Choose a column</option>
+                          {board.columns.map(column => <option key={column.id} value={column.id}>{column.name}</option>)}
+                        </select>
+                      )}
+                      {c.type === "HAS_ASSIGNEE" && (
+                        <select value={c.userId} onChange={event => setCondition(i, { ...c, userId: event.target.value })} className="input text-xs">
+                          <option value="">Choose a member</option>
+                          {members.map(m => <option key={m.userId} value={m.userId}>{m.user.name}</option>)}
+                        </select>
+                      )}
+                      {c.type === "TITLE_CONTAINS" && (
+                        <input value={c.text} onChange={event => setCondition(i, { ...c, text: event.target.value })} placeholder="Text to match" className="input text-xs" />
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Actions */}
+                <div className="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Then do</label>
+                    <button type="button" onClick={addAction} className="flex items-center gap-1 text-[10px] font-semibold text-[#6C4EF5] hover:underline"><Plus size={11} /> Action</button>
+                  </div>
+                  {form.actions.map((a, i) => (
+                    <div key={i} className="rounded-lg bg-white dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 p-2 space-y-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <select value={a.type} onChange={event => setAction(i, defaultAction(event.target.value as AutomationActionType))} className="input text-xs flex-1">
+                          {ACTION_TYPES.map(t => <option key={t} value={t}>{ACTION_LABELS[t]}</option>)}
+                        </select>
+                        <button type="button" onClick={() => removeAction(i)} className="text-gray-400 hover:text-red-500 p-1"><X size={13} /></button>
+                      </div>
+                      {(a.type === "ADD_LABELS" || a.type === "REMOVE_LABELS") && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {board.labels?.length ? board.labels.map(label => {
+                            const active = a.labelIds.includes(label.id);
+                            return <button key={label.id} type="button" onClick={() => toggleActionId(i, "labelIds", label.id)} className={`text-[11px] px-2 py-0.5 rounded-full border transition ${active ? "text-white border-transparent" : "text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-gray-400"}`} style={active ? { backgroundColor: label.colorHex } : undefined}>{label.name}</button>;
+                          }) : <span className="text-[11px] text-gray-400">No labels yet</span>}
+                        </div>
+                      )}
+                      {a.type === "MOVE_TO_COLUMN" && (
+                        <select value={a.columnId} onChange={event => setAction(i, { ...a, columnId: event.target.value })} className="input text-xs">
+                          <option value="">Choose a column</option>
+                          {board.columns.map(column => <option key={column.id} value={column.id}>{column.name}</option>)}
+                        </select>
+                      )}
+                      {(a.type === "ASSIGN_MEMBERS" || a.type === "UNASSIGN_MEMBERS") && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {members.length ? members.map(m => {
+                            const active = a.userIds.includes(m.userId);
+                            return <button key={m.userId} type="button" onClick={() => toggleActionId(i, "userIds", m.userId)} className={`text-[11px] px-2 py-0.5 rounded-full border transition ${active ? "bg-[#6C4EF5] text-white border-transparent" : "text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-gray-400"}`}>{m.user.name}</button>;
+                          }) : <span className="text-[11px] text-gray-400">No members</span>}
+                        </div>
+                      )}
+                      {a.type === "SET_DUE_DATE" && (
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <span>In</span>
+                          <input type="number" value={a.offsetDays} onChange={event => setAction(i, { ...a, offsetDays: Number(event.target.value) })} className="input text-xs w-20" />
+                          <span>day(s)</span>
+                        </div>
+                      )}
+                      {a.type === "ADD_COMMENT" && (
+                        <input value={a.text} onChange={event => setAction(i, { ...a, text: event.target.value })} placeholder="Comment text" className="input text-xs" />
+                      )}
+                      {a.type === "NOTIFY" && (
+                        <div className="space-y-1.5">
+                          <select value={a.target} onChange={event => setAction(i, { ...a, target: event.target.value as "assignees" | "members" })} className="input text-xs">
+                            <option value="assignees">Assignees</option>
+                            <option value="members">All board members</option>
+                          </select>
+                          <input value={a.message} onChange={event => setAction(i, { ...a, message: event.target.value })} placeholder="Notification message" className="input text-xs" />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {form.actions.length === 0 && <p className="text-[11px] text-gray-400">Add at least one action.</p>}
+                </div>
+
+                <div className="flex gap-2">
+                  {editingRuleId && (
+                    <button onClick={cancelEditAutomation} className="btn-secondary text-xs flex-1">Cancel</button>
+                  )}
+                  <button onClick={handleSaveAutomation} disabled={!automationFormValid(form)} className="btn-primary text-xs flex-1 disabled:opacity-40"><Zap size={13} /> {editingRuleId ? "Save changes" : "Add rule"}</button>
+                </div>
               </div>
-
-              <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400">Remove labels</label>
-              <div className="flex flex-wrap gap-1.5">
-                {board.labels?.length ? board.labels.map(label => {
-                  const active = automationForm.removeLabelIds.includes(label.id);
-                  return <button key={label.id} type="button" onClick={() => toggleAutomationLabel("removeLabelIds", label.id)} className={`text-[11px] px-2 py-0.5 rounded-full border transition ${active ? "bg-red-500 text-white border-transparent line-through" : "text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-gray-400"}`}>{label.name}</button>;
-                }) : <span className="text-[11px] text-gray-400">No labels yet</span>}
-              </div>
-
-              <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400">Move task to</label>
-              <select value={automationForm.targetColumnId} onChange={event => setAutomationForm(form => ({ ...form, targetColumnId: event.target.value }))} className="input text-xs">
-                <option value="">No move</option>
-                {board.columns.map(column => <option key={column.id} value={column.id}>{column.name}</option>)}
-              </select>
-            </div>
-
-            <button onClick={handleCreateAutomation} className="btn-primary text-xs w-full"><Zap size={13} /> Add rule</button>
-          </div>
+            );
+          })()}
 
           <div className="mt-4 space-y-2">
             {automationRules.map(rule => {
-              const triggerText = rule.triggerType === "TASK_CREATED"
-                ? `Task created in ${rule.triggerColumn?.name ?? "?"}`
-                : `${rule.triggerLabel?.name ?? "?"} ${rule.triggerType === "LABEL_ADDED" ? "added" : "removed"}`;
+              const base = TRIGGER_LABELS[rule.triggerType];
+              const triggerText = (rule.triggerType === "TASK_CREATED" || rule.triggerType === "TASK_MOVED")
+                ? `${base}: ${rule.triggerColumn?.name ?? "?"}`
+                : (rule.triggerType === "LABEL_ADDED" || rule.triggerType === "LABEL_REMOVED")
+                  ? `${rule.triggerLabel?.name ?? "?"} ${rule.triggerType === "LABEL_ADDED" ? "added" : "removed"}`
+                  : base;
               return (
-                <div key={rule.id} className={`rounded-xl border p-3 ${rule.enabled ? "border-amber-200 dark:border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/5" : "border-gray-200 dark:border-gray-700 opacity-60"}`}>
+                <div key={rule.id} className={`rounded-xl border p-3 ${editingRuleId === rule.id ? "border-[#6C4EF5] ring-1 ring-[#6C4EF5]/40 bg-[#6C4EF5]/5" : rule.enabled ? "border-amber-200 dark:border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/5" : "border-gray-200 dark:border-gray-700 opacity-60"}`}>
                   <div className="flex items-start justify-between gap-2">
-                    <div className="text-xs leading-5"><span className="text-gray-400">When </span><span className="font-semibold text-gray-700 dark:text-gray-200">{triggerText}</span></div>
-                    <button onClick={() => handleDeleteAutomation(rule.id)} className="text-gray-400 hover:text-red-500" aria-label="Delete automation"><X size={13} /></button>
+                    <div className="text-xs leading-5">
+                      {rule.name && <div className="font-semibold text-gray-800 dark:text-gray-100">{rule.name}</div>}
+                      <span className="text-gray-400">When </span><span className="font-semibold text-gray-700 dark:text-gray-200">{triggerText}</span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => startEditAutomation(rule)} className="text-gray-400 hover:text-[#6C4EF5]" aria-label="Edit automation" title="Edit"><Pencil size={12} /></button>
+                      <button onClick={() => handleDuplicateAutomation(rule)} className="text-gray-400 hover:text-[#6C4EF5]" aria-label="Duplicate automation" title="Duplicate"><Copy size={12} /></button>
+                      <button onClick={() => handleDeleteAutomation(rule.id)} className="text-gray-400 hover:text-red-500" aria-label="Delete automation" title="Delete"><X size={13} /></button>
+                    </div>
                   </div>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                    {rule.addLabelIds.map(labelId => {
-                      const label = board.labels?.find(item => item.id === labelId);
-                      return label ? <span key={`a-${labelId}`} className="text-[10px] px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: label.colorHex }}>+ {label.name}</span> : null;
-                    })}
-                    {rule.removeLabelIds.map(labelId => {
-                      const label = board.labels?.find(item => item.id === labelId);
-                      return label ? <span key={`r-${labelId}`} className="text-[10px] px-1.5 py-0.5 rounded-full border border-gray-300 dark:border-gray-600 text-gray-500 line-through">− {label.name}</span> : null;
-                    })}
-                    {rule.targetColumn && <span className="text-[10px] text-gray-500 dark:text-gray-400">→ {rule.targetColumn.name}</span>}
+                  {rule.conditions.length > 0 && (
+                    <div className="mt-1 text-[10px] text-gray-500 dark:text-gray-400">If {rule.conditions.map(c => describeCondition(c, board)).join(" · ")}</div>
+                  )}
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    {rule.actions.map((a, i) => (
+                      <span key={i} className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300">{describeAction(a, board)}</span>
+                    ))}
                   </div>
                   <button onClick={() => handleToggleAutomation(rule)} className={`mt-2 text-[10px] font-semibold ${rule.enabled ? "text-emerald-600 dark:text-emerald-400" : "text-gray-500"}`}>{rule.enabled ? "Enabled" : "Disabled"} · click to toggle</button>
                 </div>

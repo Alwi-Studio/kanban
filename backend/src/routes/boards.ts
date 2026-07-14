@@ -31,30 +31,56 @@ const createLabelSchema = z.object({
   name: z.string().trim().min(1).max(50),
   color_hex: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid label color"),
 });
-const triggerTypeEnum = z.enum(["TASK_CREATED", "LABEL_ADDED", "LABEL_REMOVED"]);
+const triggerTypeEnum = z.enum([
+  "TASK_CREATED", "TASK_MOVED", "LABEL_ADDED", "LABEL_REMOVED",
+  "ASSIGNEE_ADDED", "ASSIGNEE_REMOVED", "TASK_COMPLETED",
+]);
+const conditionSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("HAS_LABEL"), labelId: z.string().uuid() }),
+  z.object({ type: z.literal("NOT_HAS_LABEL"), labelId: z.string().uuid() }),
+  z.object({ type: z.literal("IN_COLUMN"), columnId: z.string().uuid() }),
+  z.object({ type: z.literal("HAS_ANY_ASSIGNEE") }),
+  z.object({ type: z.literal("HAS_ASSIGNEE"), userId: z.string().uuid() }),
+  z.object({ type: z.literal("NO_ASSIGNEE") }),
+  z.object({ type: z.literal("TITLE_CONTAINS"), text: z.string().trim().min(1).max(200) }),
+]);
+const actionSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("ADD_LABELS"), labelIds: z.array(z.string().uuid()).min(1) }),
+  z.object({ type: z.literal("REMOVE_LABELS"), labelIds: z.array(z.string().uuid()).min(1) }),
+  z.object({ type: z.literal("MOVE_TO_COLUMN"), columnId: z.string().uuid() }),
+  z.object({ type: z.literal("ASSIGN_MEMBERS"), userIds: z.array(z.string().uuid()).min(1) }),
+  z.object({ type: z.literal("UNASSIGN_MEMBERS"), userIds: z.array(z.string().uuid()).min(1) }),
+  z.object({ type: z.literal("SET_DUE_DATE"), offsetDays: z.number().int().min(-3650).max(3650) }),
+  z.object({ type: z.literal("CLEAR_DUE_DATE") }),
+  z.object({ type: z.literal("ADD_COMMENT"), text: z.string().trim().min(1).max(2000) }),
+  z.object({ type: z.literal("NOTIFY"), target: z.enum(["assignees", "members"]), message: z.string().trim().min(1).max(500) }),
+  z.object({ type: z.literal("MARK_COMPLETE") }),
+]);
+const triggerRequirements = (value: { trigger_type: z.infer<typeof triggerTypeEnum>; trigger_label_id?: string | null; trigger_column_id?: string | null }) => {
+  if (value.trigger_type === "TASK_CREATED" || value.trigger_type === "TASK_MOVED") return !!value.trigger_column_id;
+  if (value.trigger_type === "LABEL_ADDED" || value.trigger_type === "LABEL_REMOVED") return !!value.trigger_label_id;
+  return true;
+};
 const createAutomationSchema = z.object({
   trigger_type: triggerTypeEnum,
   trigger_label_id: z.string().uuid().nullish(),
   trigger_column_id: z.string().uuid().nullish(),
-  add_label_ids: z.array(z.string().uuid()).default([]),
-  remove_label_ids: z.array(z.string().uuid()).default([]),
-  target_column_id: z.string().uuid().nullish(),
-}).refine(
-  value => (value.trigger_type === "TASK_CREATED" ? !!value.trigger_column_id : !!value.trigger_label_id),
-  "Trigger requires a matching label or column",
-).refine(
-  value => value.add_label_ids.length > 0 || value.remove_label_ids.length > 0 || !!value.target_column_id,
-  "A rule must have at least one action",
-);
+  name: z.string().trim().max(100).nullish(),
+  conditions: z.array(conditionSchema).default([]),
+  actions: z.array(actionSchema).min(1, "A rule must have at least one action"),
+}).refine(triggerRequirements, "This trigger requires a matching label or column");
 const updateAutomationSchema = z.object({
-  trigger_type: triggerTypeEnum.optional(),
+  trigger_type: triggerTypeEnum,
   trigger_label_id: z.string().uuid().nullish(),
   trigger_column_id: z.string().uuid().nullish(),
-  add_label_ids: z.array(z.string().uuid()).optional(),
-  remove_label_ids: z.array(z.string().uuid()).optional(),
-  target_column_id: z.string().uuid().nullish(),
+  name: z.string().trim().max(100).nullish(),
+  conditions: z.array(conditionSchema).optional(),
+  actions: z.array(actionSchema).min(1).optional(),
   enabled: z.boolean().optional(),
-}).refine(value => Object.keys(value).length > 0, "No changes supplied");
+}).partial({ trigger_type: true }).refine(
+  value => value.trigger_type === undefined || triggerRequirements(value as any),
+  "This trigger requires a matching label or column",
+);
 
 boardRouter.get("/", authenticate, boardController.listBoards);
 boardRouter.post("/", authenticate, validate(createBoardSchema), boardController.createBoard);
@@ -119,9 +145,9 @@ boardRouter.post("/:id/automations", authenticate, requireRole("admin", "owner")
       triggerType: req.body.trigger_type,
       triggerLabelId: req.body.trigger_label_id,
       triggerColumnId: req.body.trigger_column_id,
-      addLabelIds: req.body.add_label_ids,
-      removeLabelIds: req.body.remove_label_ids,
-      targetColumnId: req.body.target_column_id,
+      name: req.body.name,
+      conditions: req.body.conditions,
+      actions: req.body.actions,
     });
     res.status(201).json(rule);
   } catch (err) { next(err); }
@@ -133,9 +159,9 @@ boardRouter.patch("/:id/automations/:ruleId", authenticate, requireRole("admin",
       triggerType: req.body.trigger_type,
       triggerLabelId: req.body.trigger_label_id,
       triggerColumnId: req.body.trigger_column_id,
-      addLabelIds: req.body.add_label_ids,
-      removeLabelIds: req.body.remove_label_ids,
-      targetColumnId: req.body.target_column_id,
+      name: req.body.name,
+      conditions: req.body.conditions,
+      actions: req.body.actions,
       enabled: req.body.enabled,
     });
     res.json(rule);

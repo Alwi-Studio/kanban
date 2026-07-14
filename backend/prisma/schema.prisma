@@ -85,7 +85,6 @@ model Column {
   position          Int
   board             Board            @relation(fields: [boardId], references: [id])
   tasks             Task[]
-  automationTargets AutomationRule[] @relation("AutomationTargetColumn")
   automationTriggerColumns AutomationRule[] @relation("AutomationTriggerColumn")
 
   @@index([boardId, position])
@@ -198,18 +197,18 @@ model Notification {
 model AutomationRule {
   id              String   @id @default(uuid())
   boardId         String   @map("board_id")
-  triggerType     String   @map("trigger_type") // TASK_CREATED|LABEL_ADDED|LABEL_REMOVED
+  // TASK_CREATED|TASK_MOVED|LABEL_ADDED|LABEL_REMOVED|ASSIGNEE_ADDED|ASSIGNEE_REMOVED|TASK_COMPLETED
+  triggerType     String   @map("trigger_type")
   triggerLabelId  String?  @map("trigger_label_id")
   triggerColumnId String?  @map("trigger_column_id")
-  addLabelIds     String[] @default([]) @map("add_label_ids")
-  removeLabelIds  String[] @default([]) @map("remove_label_ids")
-  targetColumnId  String?  @map("target_column_id")
+  name            String?
+  conditions      Json     @default("[]")
+  actions         Json     @default("[]")
   enabled         Boolean  @default(true)
   createdAt       DateTime @default(now()) @map("created_at")
   board           Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
   triggerLabel    Label?   @relation("AutomationTriggerLabel", fields: [triggerLabelId], references: [id], onDelete: Cascade)
   triggerColumn   Column?  @relation("AutomationTriggerColumn", fields: [triggerColumnId], references: [id], onDelete: Cascade)
-  targetColumn    Column?  @relation("AutomationTargetColumn", fields: [targetColumnId], references: [id], onDelete: SetNull)
 
   @@index([boardId, enabled])
   @@index([triggerType, enabled])

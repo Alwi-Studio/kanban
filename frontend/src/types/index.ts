@@ -183,7 +183,38 @@ export interface AdminUser {
   memberships: AdminUserMembership[];
 }
 
-export type AutomationTriggerType = "TASK_CREATED" | "LABEL_ADDED" | "LABEL_REMOVED";
+export type AutomationTriggerType =
+  | "TASK_CREATED"
+  | "TASK_MOVED"
+  | "LABEL_ADDED"
+  | "LABEL_REMOVED"
+  | "ASSIGNEE_ADDED"
+  | "ASSIGNEE_REMOVED"
+  | "TASK_COMPLETED";
+
+export type AutomationCondition =
+  | { type: "HAS_LABEL"; labelId: string }
+  | { type: "NOT_HAS_LABEL"; labelId: string }
+  | { type: "IN_COLUMN"; columnId: string }
+  | { type: "HAS_ANY_ASSIGNEE" }
+  | { type: "HAS_ASSIGNEE"; userId: string }
+  | { type: "NO_ASSIGNEE" }
+  | { type: "TITLE_CONTAINS"; text: string };
+
+export type AutomationAction =
+  | { type: "ADD_LABELS"; labelIds: string[] }
+  | { type: "REMOVE_LABELS"; labelIds: string[] }
+  | { type: "MOVE_TO_COLUMN"; columnId: string }
+  | { type: "ASSIGN_MEMBERS"; userIds: string[] }
+  | { type: "UNASSIGN_MEMBERS"; userIds: string[] }
+  | { type: "SET_DUE_DATE"; offsetDays: number }
+  | { type: "CLEAR_DUE_DATE" }
+  | { type: "ADD_COMMENT"; text: string }
+  | { type: "NOTIFY"; target: "assignees" | "members"; message: string }
+  | { type: "MARK_COMPLETE" };
+
+export type AutomationConditionType = AutomationCondition["type"];
+export type AutomationActionType = AutomationAction["type"];
 
 export interface AutomationRule {
   id: string;
@@ -191,21 +222,20 @@ export interface AutomationRule {
   triggerType: AutomationTriggerType;
   triggerLabelId: string | null;
   triggerColumnId: string | null;
-  addLabelIds: string[];
-  removeLabelIds: string[];
-  targetColumnId: string | null;
+  name: string | null;
+  conditions: AutomationCondition[];
+  actions: AutomationAction[];
   enabled: boolean;
   createdAt: string;
   triggerLabel: Label | null;
   triggerColumn: Column | null;
-  targetColumn: Column | null;
 }
 
 export interface AutomationRuleInput {
   trigger_type: AutomationTriggerType;
   trigger_label_id?: string | null;
   trigger_column_id?: string | null;
-  add_label_ids?: string[];
-  remove_label_ids?: string[];
-  target_column_id?: string | null;
+  name?: string | null;
+  conditions?: AutomationCondition[];
+  actions?: AutomationAction[];
 }
