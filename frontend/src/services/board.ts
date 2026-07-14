@@ -66,6 +66,7 @@ export async function updateTask(id: string, updates: {
   column_id?: string;
   due_date?: string | null;
   version?: number;
+  completed?: boolean;
 }) {
   const { data } = await api.patch(`/tasks/${id}`, updates);
   return data as Task;

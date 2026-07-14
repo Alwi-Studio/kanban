@@ -33,8 +33,13 @@ export async function updateTask(
     columnId?: string;
     dueDate?: Date | null;
     version?: number;
+    completed?: boolean;
   },
 ) {
+  // Explicit manual completion toggle (independent of columns).
+  const completedAtData = data.completed === undefined
+    ? {}
+    : { completedAt: data.completed ? new Date() : null };
   if (data.columnId !== undefined || data.position !== undefined) {
     const existing = await prisma.task.findUnique({
       where: { id },
@@ -86,6 +91,7 @@ export async function updateTask(
                 ...(existing.columnId !== targetColumnId && isDoneColumn(targetColumn.name) && !existing.completedAt
                   ? { completedAt: new Date() }
                   : {}),
+                ...completedAtData,
               }
             : { position },
         });
@@ -108,6 +114,7 @@ export async function updateTask(
       title: data.title,
       description: data.description,
       dueDate: data.dueDate,
+      ...completedAtData,
     },
     include: {
       assignees: {

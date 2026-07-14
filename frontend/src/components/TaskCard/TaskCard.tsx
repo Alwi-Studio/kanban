@@ -1,13 +1,16 @@
+import { useState, useRef, useEffect } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CalendarDays, MessageSquare, Paperclip, Trash2 } from "lucide-react";
+import { CalendarDays, MessageSquare, Paperclip, Trash2, Plus } from "lucide-react";
 import AvatarStack from "../ui/AvatarStack";
-import type { Task } from "../../types";
+import type { Task, Label } from "../../types";
 
 interface TaskCardProps {
   task: Task;
   onDelete?: (taskId: string) => void;
   onClick?: () => void;
+  labels?: Label[];
+  onAddLabel?: (task: Task, labelId: string) => void;
   isDragOverlay?: boolean;
   disabled?: boolean;
 }
@@ -35,11 +38,25 @@ function getLabelClass(colorHex: string) {
   return labelColors.peach;
 }
 
-export default function TaskCard({ task, onDelete, onClick, isDragOverlay, disabled = false }: TaskCardProps) {
+export default function TaskCard({ task, onDelete, onClick, labels, onAddLabel, isDragOverlay, disabled = false }: TaskCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     disabled: isDragOverlay || disabled,
   });
+  const [showLabelPicker, setShowLabelPicker] = useState(false);
+  const labelPickerRef = useRef<HTMLDivElement>(null);
+  const stop = (event: React.SyntheticEvent) => event.stopPropagation();
+  const availableLabels = (labels || []).filter(l => !task.taskLabels.some(tl => tl.labelId === l.id));
+  const canQuickLabel = !isDragOverlay && !!onAddLabel && availableLabels.length > 0;
+
+  useEffect(() => {
+    if (!showLabelPicker) return;
+    const handler = (event: MouseEvent) => {
+      if (labelPickerRef.current && !labelPickerRef.current.contains(event.target as Node)) setShowLabelPicker(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showLabelPicker]);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -75,13 +92,41 @@ export default function TaskCard({ task, onDelete, onClick, isDragOverlay, disab
           <Trash2 size={12} />
         </button>
       )}
-      {task.taskLabels && task.taskLabels.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-2">
+      {(task.taskLabels?.length > 0 || canQuickLabel) && (
+        <div className="flex flex-wrap items-center gap-1.5 mb-2">
           {task.taskLabels.map((tl) => (
             <span key={tl.labelId} className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${getLabelClass(tl.label.colorHex)}`}>
               {tl.label.name}
             </span>
           ))}
+          {canQuickLabel && (
+            <div className="relative" ref={labelPickerRef}>
+              <button
+                onPointerDown={stop}
+                onClick={event => { stop(event); setShowLabelPicker(prev => !prev); }}
+                className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 hover:text-brand hover:border-brand transition ${showLabelPicker ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus:opacity-100"}`}
+                aria-label="Add label"
+                title="Add label"
+              >
+                <Plus size={10} /> Label
+              </button>
+              {showLabelPicker && (
+                <div onPointerDown={stop} onClick={stop} className="absolute left-0 top-full mt-1 z-20 w-44 max-h-48 overflow-y-auto bg-white dark:bg-surface-dark rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg p-1.5">
+                  {availableLabels.map(l => (
+                    <button
+                      key={l.id}
+                      onPointerDown={stop}
+                      onClick={event => { stop(event); onAddLabel!(task, l.id); setShowLabelPicker(false); }}
+                      className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-xs text-gray-700 dark:text-gray-300 text-left"
+                    >
+                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: l.colorHex }} />
+                      <span className="truncate">{l.name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

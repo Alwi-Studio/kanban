@@ -4,7 +4,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable } from "@dnd-
 import { CSS } from "@dnd-kit/utilities";
 import { Plus, MoreHorizontal, Trash2, GripVertical } from "lucide-react";
 import TaskCard from "../TaskCard/TaskCard";
-import type { Column, Task } from "../../types";
+import type { Column, Task, Label } from "../../types";
 
 const COLORS = ["#6C4EF5", "#F5A623", "#2ECC71", "#E74C3C", "#3498DB", "#9B59B6", "#1ABC9C", "#E67E22"];
 
@@ -18,6 +18,8 @@ interface ColumnViewProps {
   onDeleteTask: (taskId: string) => void;
   onTaskClick: (task: Task) => void;
   onRenameColumn: (name: string) => void;
+  labels?: Label[];
+  onAddLabel?: (task: Task, labelId: string) => void;
   canEditTasks?: boolean;
   canReorderTasks?: boolean;
   canManageColumn?: boolean;
@@ -33,6 +35,8 @@ export default function ColumnView({
   onDeleteTask,
   onTaskClick,
   onRenameColumn,
+  labels,
+  onAddLabel,
   canEditTasks = true,
   canReorderTasks = canEditTasks,
   canManageColumn = true,
@@ -173,7 +177,7 @@ export default function ColumnView({
       <div ref={setDropRef} className="flex-1 min-h-[72px] space-y-2.5 overflow-y-auto scrollbar-thin px-0.5">
         <SortableContext items={column.tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
           {column.tasks.map((task) => (
-            <TaskCard key={task.id} task={task} onDelete={canEditTasks ? onDeleteTask : undefined} onClick={() => onTaskClick(task)} disabled={!canReorderTasks} />
+            <TaskCard key={task.id} task={task} onDelete={canEditTasks ? onDeleteTask : undefined} onClick={() => onTaskClick(task)} labels={canEditTasks ? labels : undefined} onAddLabel={onAddLabel} disabled={!canReorderTasks} />
           ))}
         </SortableContext>
         {column.tasks.length === 0 && (

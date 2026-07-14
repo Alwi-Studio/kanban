@@ -15,6 +15,7 @@ const updateTaskSchema = z.object({
   column_id: z.string().uuid().optional(),
   due_date: z.string().datetime().nullable().optional(),
   version: z.number().int().optional(),
+  completed: z.boolean().optional(),
 });
 
 const assigneeSchema = z.object({

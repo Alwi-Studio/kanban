@@ -60,7 +60,7 @@ export async function createTask(req: Request, res: Response, next: NextFunction
 
 export async function updateTask(req: Request, res: Response, next: NextFunction) {
   try {
-    const { title, description, position, column_id, due_date, version } = req.body;
+    const { title, description, position, column_id, due_date, version, completed } = req.body;
     const oldTask = await prisma.task.findUnique({ where: { id: req.params.id } });
     const task = await taskService.updateTask(req.params.id, {
       title, description,
@@ -68,23 +68,29 @@ export async function updateTask(req: Request, res: Response, next: NextFunction
       columnId: column_id,
       dueDate: due_date !== undefined ? (due_date ? new Date(due_date) : null) : undefined,
       version,
+      completed,
     });
+    const completionChanged = completed !== undefined && !!oldTask?.completedAt !== completed;
     const col = await prisma.column.findUnique({ where: { id: task.columnId }, select: { boardId: true, name: true } });
     if (col && req.user) {
       if (column_id && column_id !== oldTask?.columnId) {
         const fromCol = await prisma.column.findUnique({ where: { id: oldTask!.columnId }, select: { name: true } });
         await createLog(col.boardId, req.user.userId, `Moved task "${task.title}" from ${fromCol?.name} to ${col.name}`);
+      } else if (completionChanged) {
+        await createLog(col.boardId, req.user.userId, completed ? `Marked "${task.title}" complete` : `Reopened "${task.title}"`);
       } else if (title && title !== oldTask?.title) {
         await createLog(col.boardId, req.user.userId, `Renamed task to "${title}"`);
       }
     }
     if (col) emitBoardEvent(col.boardId, "task:updated", task);
-    if (column_id || position !== undefined) emitBoardEvent(col!.boardId, "board:refresh", { boardId: col!.boardId });
+    if (column_id || position !== undefined || completionChanged) emitBoardEvent(col!.boardId, "board:refresh", { boardId: col!.boardId });
     if (col && column_id && column_id !== oldTask?.columnId) {
       await runAutomation(col.boardId, task.id, { type: "TASK_MOVED", columnId: task.columnId }, req.user?.userId);
       if (!oldTask?.completedAt && task.completedAt) {
         await runAutomation(col.boardId, task.id, { type: "TASK_COMPLETED" }, req.user?.userId);
       }
+    } else if (col && completionChanged && completed) {
+      await runAutomation(col.boardId, task.id, { type: "TASK_COMPLETED" }, req.user?.userId);
     }
     res.json(task);
   } catch (err) { next(err); }

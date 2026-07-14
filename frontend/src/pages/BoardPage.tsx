@@ -4,7 +4,7 @@ import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, u
 import { SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 import { Plus, Filter, List, ListTodo, X, Users, Tag, Share2, Search, Upload, ArrowUpDown, Eye, MessageSquare, Zap, Globe, ArrowRightLeft, Pencil, Copy } from "lucide-react";
 import { useBoardStore } from "../store/boardStore";
-import { getBoard, createColumn, deleteColumn, updateColumn, updateTask, createTask, deleteTask, createLabel, deleteLabel, getActivityLogs, inviteMember, updateMemberRole, removeMember, updateBoard, deleteBoard, getAutomationRules, createAutomationRule, updateAutomationRule, deleteAutomationRule, getTransferTargets, transferBoard } from "../services/board";
+import { getBoard, createColumn, deleteColumn, updateColumn, updateTask, createTask, deleteTask, createLabel, deleteLabel, addLabelToTask as addLabelToTaskService, getActivityLogs, inviteMember, updateMemberRole, removeMember, updateBoard, deleteBoard, getAutomationRules, createAutomationRule, updateAutomationRule, deleteAutomationRule, getTransferTargets, transferBoard } from "../services/board";
 import { connectSocket, joinBoard, leaveBoard } from "../services/socket";
 import { useToast } from "../components/ui/Toast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
@@ -467,6 +467,19 @@ export default function BoardPage() {
     confirmThen("Delete label", `Delete "${labelName}"?`, () => deleteLabel(id!, labelId), `Label deleted`);
   };
 
+  // Quick-add a label straight from a board card, without opening the task modal.
+  const handleQuickAddLabel = async (task: Task, labelId: string) => {
+    const label = board?.labels?.find(l => l.id === labelId);
+    if (!label || task.taskLabels.some(tl => tl.labelId === labelId)) return;
+    updateTaskInState({ ...task, taskLabels: [...task.taskLabels, { taskId: task.id, labelId, label }] });
+    try {
+      await addLabelToTaskService(task.id, labelId);
+    } catch (error: any) {
+      updateTaskInState(task); // revert on failure
+      toast(apiError(error, "Failed to add label"), "error");
+    }
+  };
+
   const openAutomation = async () => {
     if (!id || !board) return;
     setShowAutomation(true);
@@ -916,6 +929,8 @@ export default function BoardPage() {
                     }}
                     onTaskClick={task => setSelectedTask(task)}
                     onRenameColumn={(name) => handleRenameColumn(col.id, name)}
+                    labels={board.labels}
+                    onAddLabel={handleQuickAddLabel}
                     canEditTasks={canEditTasks}
                     canReorderTasks={canReorderTasks}
                     canManageColumn={canManageBoard}

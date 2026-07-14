@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { X, Calendar, Paperclip, MessageSquare, UserPlus, Image, FileText, File, Search } from "lucide-react";
+import { X, Calendar, Paperclip, MessageSquare, UserPlus, Image, FileText, File, Search, Check } from "lucide-react";
 import type { Task, Comment, Attachment, Board, Label } from "../../types";
 import { getComments, addComment, getAttachments, uploadAttachment, addAssignee, removeAssignee, addLabelToTask, removeLabelFromTask, updateTask } from "../../services/board";
 import { API_BASE } from "../../services/api";
@@ -122,6 +122,16 @@ export default function TaskModal({ task, board, onClose, onUpdate, canEdit = tr
     }
   };
 
+  const handleToggleComplete = async () => {
+    try {
+      const updated = await updateTask(task.id, { completed: !task.completedAt });
+      onUpdate(updated);
+      toast(updated.completedAt ? "Marked complete" : "Reopened", "success");
+    } catch (error: any) {
+      toast(error.response?.data?.error || "Failed to update task", "error");
+    }
+  };
+
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
     try {
@@ -198,9 +208,16 @@ export default function TaskModal({ task, board, onClose, onUpdate, canEdit = tr
             disabled={!canEdit}
             className="bg-transparent text-lg font-semibold text-gray-900 dark:text-white flex-1 outline-none"
           />
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition">
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2 shrink-0 ml-3">
+            {canEdit && (
+              <button onClick={handleToggleComplete} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition ${task.completedAt ? "bg-emerald-500 text-white hover:bg-emerald-600" : "border border-gray-200 dark:border-gray-600 text-gray-500 hover:text-emerald-600 hover:border-emerald-400"}`}>
+                <Check size={13} /> {task.completedAt ? "Completed" : "Mark done"}
+              </button>
+            )}
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition">
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         <div className="p-6 space-y-6">
