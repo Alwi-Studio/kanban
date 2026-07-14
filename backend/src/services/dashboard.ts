@@ -44,14 +44,18 @@ export async function getDashboardStats(userId: string): Promise<DashboardStats>
   });
 
   const allTasks = boards.flatMap((b) => b.columns.flatMap((c) => c.tasks));
-  const doneTasks = allTasks.filter((t) => {
-    const col = boards.flatMap((b) => b.columns).find((c) => c.tasks.some((x) => x.id === t.id));
-    return ["done", "completed", "complete", "selesai"].includes(col?.name.trim().toLowerCase() || "");
-  });
+  // A task counts as done once it has a completedAt timestamp (set by moving into
+  // a Done column or by a "mark complete" automation) — it stays done wherever it
+  // moves afterwards. Legacy tasks with no timestamp fall back to the column name.
+  const DONE_COLUMN_NAMES = ["done", "completed", "complete", "selesai"];
+  const columnOf = (t: (typeof allTasks)[number]) =>
+    boards.flatMap((b) => b.columns).find((c) => c.tasks.some((x) => x.id === t.id));
+  const isDone = (t: (typeof allTasks)[number]) =>
+    t.completedAt != null || DONE_COLUMN_NAMES.includes(columnOf(t)?.name.trim().toLowerCase() || "");
+  const doneTasks = allTasks.filter(isDone);
   const overdueTasks = allTasks.filter((t) => {
-    if (!t.dueDate) return false;
-    const col = boards.flatMap((b) => b.columns).find((c) => c.tasks.some((x) => x.id === t.id));
-    return new Date(t.dueDate) < new Date() && !["done", "completed", "complete", "selesai"].includes(col?.name.trim().toLowerCase() || "");
+    if (!t.dueDate || isDone(t)) return false;
+    return new Date(t.dueDate) < new Date();
   });
 
   let avgCompletionTime: number | null = null;

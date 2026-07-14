@@ -81,8 +81,10 @@ export async function updateTask(
                 columnId: targetColumnId,
                 position,
                 version: { increment: 1 },
-                ...(existing.columnId !== targetColumnId
-                  ? { completedAt: isDoneColumn(targetColumn.name) ? (existing.completedAt || new Date()) : null }
+                // Stamp completedAt when entering a Done column; never clear it on a
+                // move, so a completed task stays counted wherever it goes.
+                ...(existing.columnId !== targetColumnId && isDoneColumn(targetColumn.name) && !existing.completedAt
+                  ? { completedAt: new Date() }
                   : {}),
               }
             : { position },

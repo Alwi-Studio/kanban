@@ -321,7 +321,7 @@ export default function BoardPage() {
     if (filterAssignee) tasks = tasks.filter(t => t.assignees.some(a => a.userId === filterAssignee));
 
     if (activeTab === "due") tasks = tasks.filter(t => t.dueDate);
-    if (activeTab === "completed") tasks = tasks.filter(t => col.name.toLowerCase() === "done");
+    if (activeTab === "completed") tasks = tasks.filter(t => t.completedAt != null || col.name.toLowerCase() === "done");
 
     if (sortBy === "oldest") tasks = [...tasks].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     else if (sortBy === "newest") tasks = [...tasks].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
