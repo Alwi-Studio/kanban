@@ -97,18 +97,22 @@ export default function DashboardPage() {
     points: Number(point.points),
   }));
 
+  // The whole dashboard follows the toggle: `view` is either the personal scope
+  // (tasks assigned to me) or the organization scope (all accessible boards).
+  const view = stats ? (statsView === "personal" ? stats.personal : stats) : null;
+
   const filteredTrends = (() => {
-    if (!stats) return [];
+    if (!view) return [];
     const days = period === "30d" ? 30 : period === "7d" ? 7 : 1;
-    return stats.taskTrends.slice(-days);
+    return view.taskTrends.slice(-days);
   })();
 
   const periodLabels: Record<Period, string> = {
-    "30d": "30 hari",
-    "7d": "7 hari",
-    "24h": "24 jam",
+    "30d": "30 days",
+    "7d": "7 days",
+    "24h": "24 hours",
   };
-  const summary = statsView === "personal" ? stats?.personal : stats;
+  const summary = view;
 
   if (loading) {
     return (
@@ -165,14 +169,14 @@ export default function DashboardPage() {
           <StatCard label="Avg Completion" value={summary?.avgCompletionTime ? `${summary.avgCompletionTime}d` : "—"} icon={<LayoutDashboard size={20} />} color="brand" />
         </div>
 
-        <div className="flex items-center gap-2 pt-1"><span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" /><span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Overall workflow</span><span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" /></div>
+        <div className="flex items-center gap-2 pt-1"><span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" /><span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">{statsView === "personal" ? "Your workflow" : "Overall workflow"}</span><span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" /></div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 card p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Progress Task per Waktu</h2>
-                <p className="text-xs text-gray-400 mt-0.5">Progres penyelesaian task {periodLabels[period]} terakhir</p>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Task Progress Over Time</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Task completion over the last {periodLabels[period]}</p>
               </div>
               <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
                 {(["30d", "7d", "24h"] as Period[]).map((p) => (
@@ -222,15 +226,15 @@ export default function DashboardPage() {
                       borderRadius: "8px",
                       fontSize: "12px",
                     }}
-                    labelFormatter={(v) => new Date(v).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "short" })}
+                    labelFormatter={(v) => new Date(v).toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "short" })}
                   />
-                  <Area type="monotone" dataKey="created" stroke="#12B76A" fill="url(#createdGrad)" strokeWidth={2} name="Dibuat" />
-                    <Area type="monotone" dataKey="completed" stroke="#6C4EF5" fill="url(#completedGrad)" strokeWidth={2} name="Selesai" />
+                  <Area type="monotone" dataKey="created" stroke="#12B76A" fill="url(#createdGrad)" strokeWidth={2} name="Created" />
+                    <Area type="monotone" dataKey="completed" stroke="#6C4EF5" fill="url(#completedGrad)" strokeWidth={2} name="Completed" />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
               <div className="flex items-center justify-center h-[260px] text-gray-400 text-sm">
-                Belum ada data task untuk ditampilkan
+                No task data to display
               </div>
             )}
           </div>
@@ -238,11 +242,11 @@ export default function DashboardPage() {
           <div className="card p-6">
             <div className="flex items-center gap-2 mb-5">
               <Trophy size={18} className="text-yellow-500" />
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Top Kontributor</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Top Contributors</h2>
             </div>
-            {stats && stats.topContributors.length > 0 ? (
+            {view && view.topContributors.length > 0 ? (
               <div className="space-y-4">
-                {stats.topContributors.map((c, i) => (
+                {view.topContributors.map((c, i) => (
                   <div key={c.userId}>
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2.5 min-w-0">
@@ -258,13 +262,13 @@ export default function DashboardPage() {
                       </div>
                       <span className="text-xs font-semibold text-gray-900 dark:text-white">{c.completedCount}</span>
                     </div>
-                    <ProgressBar value={c.completedCount} max={stats.topContributors[0].completedCount} color="bg-yellow-400" />
+                    <ProgressBar value={c.completedCount} max={view.topContributors[0].completedCount} color="bg-yellow-400" />
                   </div>
                 ))}
               </div>
             ) : (
               <div className="flex items-center justify-center h-[200px] text-gray-400 text-sm">
-                Belum ada task selesai
+                No completed tasks yet
               </div>
             )}
           </div>
@@ -274,25 +278,25 @@ export default function DashboardPage() {
           <div className="card p-6">
             <div className="flex items-center gap-2 mb-5">
               <Layers size={18} className="text-brand" />
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Distribusi Task per Kolom</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Task Distribution by Column</h2>
             </div>
-            {stats && stats.tasksPerColumn.length > 0 ? (
+            {view && view.tasksPerColumn.length > 0 ? (
               <div className="space-y-3">
-                {stats.tasksPerColumn.map((tc) => (
+                {view.tasksPerColumn.map((tc) => (
                   <div key={tc.name}>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-sm text-gray-700 dark:text-gray-300">{tc.name}</span>
                       <span className="text-xs font-medium text-gray-500">
-                        {tc.count} task <span className="text-gray-400">({tc.percentage}%)</span>
+                        {tc.count} {tc.count === 1 ? "task" : "tasks"} <span className="text-gray-400">({tc.percentage}%)</span>
                       </span>
                     </div>
-                    <ProgressBar value={tc.count} max={Math.max(...stats.tasksPerColumn.map(t => t.count))} />
+                    <ProgressBar value={tc.count} max={Math.max(...view.tasksPerColumn.map(t => t.count))} />
                   </div>
                 ))}
               </div>
             ) : (
               <div className="flex items-center justify-center h-[200px] text-gray-400 text-sm">
-                Belum ada task
+                No tasks yet
               </div>
             )}
           </div>
@@ -301,20 +305,20 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
                 <Clock size={18} className="text-brand" />
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Task Terbaru</h2>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Tasks</h2>
               </div>
-              {stats && stats.recentTasks.length > 0 && (
+              {view && view.recentTasks.length > 0 && (
                 <button
                   onClick={() => {
-                    if (stats.recentTasks[0]) navigate(`/board/${stats.recentTasks[0].boardId}`);
+                    if (view.recentTasks[0]) navigate(`/board/${view.recentTasks[0].boardId}`);
                   }}
                   className="text-xs text-brand hover:underline flex items-center gap-1"
                 >
-                  Lihat semua <ArrowRight size={12} />
+                  View all <ArrowRight size={12} />
                 </button>
               )}
             </div>
-            {stats && stats.recentTasks.length > 0 ? (
+            {view && view.recentTasks.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -326,7 +330,7 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {stats.recentTasks.slice(0, 5).map((t) => (
+                    {view.recentTasks.slice(0, 5).map((t) => (
                       <tr
                         key={t.id}
                         onClick={() => navigate(`/board/${t.boardId}`)}
@@ -366,7 +370,7 @@ export default function DashboardPage() {
                               new Date(t.dueDate).getTime() - Date.now() < 86400000 ? "text-yellow-500" :
                               "text-gray-500"
                             }`}>
-                              {new Date(t.dueDate).toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
+                              {new Date(t.dueDate).toLocaleDateString("en-US", { day: "numeric", month: "short" })}
                             </span>
                           ) : (
                             <span className="text-gray-400">—</span>
@@ -379,7 +383,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="flex items-center justify-center h-[200px] text-gray-400 text-sm">
-                Belum ada task
+                No tasks yet
               </div>
             )}
           </div>
@@ -397,7 +401,7 @@ export default function DashboardPage() {
               )}
             </div>
             <button onClick={() => navigate("/staff")} className="text-xs text-brand hover:underline flex items-center gap-1">
-              Lihat semua <ArrowRight size={12} />
+              View all <ArrowRight size={12} />
             </button>
           </div>
 

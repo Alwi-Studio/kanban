@@ -128,11 +128,7 @@ export interface NotificationsResponse {
   unread: number;
 }
 
-export interface DashboardStats {
-  isGlobalAdmin: boolean;
-  scope: "organization" | "accessible";
-  boardCount: number;
-  personal: Pick<DashboardStats, "totalTasks" | "completedTasks" | "overdueTasks" | "avgCompletionTime">;
+export interface DashboardScopeStats {
   totalTasks: number;
   completedTasks: number;
   overdueTasks: number;
@@ -149,6 +145,15 @@ export interface DashboardStats {
     assignees: { id: string; name: string }[];
   }[];
   taskTrends: { date: string; completed: number; created: number }[];
+}
+
+// Top-level fields are the organization/all-boards scope; `personal` is the
+// same shape filtered to tasks assigned to the current user.
+export interface DashboardStats extends DashboardScopeStats {
+  isGlobalAdmin: boolean;
+  scope: "organization" | "accessible";
+  boardCount: number;
+  personal: DashboardScopeStats;
 }
 
 export interface GlobalBoard extends Board {
