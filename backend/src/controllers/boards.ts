@@ -39,10 +39,18 @@ export async function createBoard(req: Request, res: Response, next: NextFunctio
 export async function updateBoard(req: Request, res: Response, next: NextFunction) {
   try {
     const { name, isGlobal } = req.body;
+    // Only global admins may change a board's public visibility. Board
+    // admins/owners can still rename the board.
+    if (isGlobal !== undefined) {
+      const actor = await prisma.user.findUnique({ where: { id: req.user!.userId }, select: { isGlobalAdmin: true } });
+      if (!actor?.isGlobalAdmin) {
+        return res.status(403).json({ error: "Only a global admin can make a board public" });
+      }
+    }
     const board = await boardService.updateBoard(req.params.id, { name, isGlobal });
     if (req.user) {
       if (name !== undefined) await createLog(req.params.id, req.user.userId, `Renamed board to "${name}"`);
-      if (isGlobal !== undefined) await createLog(req.params.id, req.user.userId, isGlobal ? "Added board to the global board" : "Removed board from the global board");
+      if (isGlobal !== undefined) await createLog(req.params.id, req.user.userId, isGlobal ? "Made board public" : "Made board private");
     }
     res.json(board);
   } catch (err) { next(err); }

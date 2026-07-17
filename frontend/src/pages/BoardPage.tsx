@@ -496,6 +496,24 @@ export default function BoardPage() {
     } catch (error: any) { toast(apiError(error, "Failed to rename column"), "error"); }
   };
 
+  // Would the given task be visible under the current view/filters? Used so a
+  // freshly created task is never silently hidden (e.g. by a stuck quick filter).
+  const isTaskVisible = (task: Task, col: Column) => {
+    if (search && !task.title.toLowerCase().includes(search.toLowerCase())) return false;
+    if (filterLabel && !task.taskLabels.some(tl => tl.labelId === filterLabel)) return false;
+    if (filterAssignee && !task.assignees.some(a => a.userId === filterAssignee)) return false;
+    if (quickFilter === "mine" && !task.assignees.some(a => a.userId === user?.id)) return false;
+    if (quickFilter === "soon" || quickFilter === "overdue") {
+      if (!task.dueDate || task.completedAt) return false;
+      const due = new Date(task.dueDate).getTime();
+      const now = Date.now();
+      if (quickFilter === "overdue" ? due >= now : !(due >= now && due - now < 3 * 86400000)) return false;
+    }
+    if (activeTab === "due" && !task.dueDate) return false;
+    if (activeTab === "completed" && !(task.completedAt != null || col.name.toLowerCase() === "done")) return false;
+    return true;
+  };
+
   const handleAddTask = async (colId: string, customTitle?: string) => {
     const title = customTitle || newTaskTitles[colId]?.trim();
     if (!title) return;
@@ -503,7 +521,14 @@ export default function BoardPage() {
       const task = await createTask(colId, title);
       addTaskToState(task);
       setNewTaskTitles(p => ({ ...p, [colId]: "" }));
-      toast(`Task created`, "success");
+      const col = board?.columns.find(c => c.id === colId);
+      if (col && !isTaskVisible(task, col)) {
+        // The new task doesn't match the active filters — clear them so it shows.
+        setSearch(""); setFilterLabel(""); setFilterAssignee(""); setQuickFilter(""); setActiveTab("status");
+        toast("Task created — cleared filters so you can see it", "success");
+      } else {
+        toast("Task created", "success");
+      }
     } catch (error: any) { toast(apiError(error, "Failed to create task"), "error"); }
   };
 
@@ -714,13 +739,13 @@ export default function BoardPage() {
     }
   };
 
-  const handleToggleGlobal = async () => {
+  const handleTogglePublic = async () => {
     if (!id || !board) return;
     const next = !board.isGlobal;
     try {
       const updated = await updateBoard(id, { isGlobal: next });
       setCurrentBoard({ ...board, isGlobal: updated.isGlobal });
-      toast(next ? "Board added to the Global board" : "Board removed from the Global board", "success");
+      toast(next ? "Board is now public" : "Board is now private", "success");
     } catch (error: any) {
       toast(apiError(error, "Failed to update the board"), "error");
     }
@@ -830,6 +855,11 @@ export default function BoardPage() {
                   <h1 className="text-lg font-bold text-[#1A1A2E] dark:text-white" onDoubleClick={() => { skipBoardNameBlurRef.current = false; setEditingBoard(true); setBoardNameValue(board.name); }}>
                     {board.name}
                   </h1>
+                )}
+                {board.isGlobal && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#ff5a30]/10 text-[#ff5a30] shrink-0" title="Public — visible to everyone in the app (read-only for non-members)">
+                    <Globe size={11} /> Public
+                  </span>
                 )}
                 {canManageBoard && <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
                   <button onClick={() => { skipBoardNameBlurRef.current = false; setEditingBoard(true); setBoardNameValue(board.name); }} className="p-1 rounded text-gray-300 dark:text-gray-600 hover:text-[#ff5a30] hover:bg-[#ff5a30]/10 transition" title="Rename">
@@ -953,7 +983,7 @@ export default function BoardPage() {
               {canManageBoard && <button onClick={openAutomation} className={`p-1.5 rounded-full transition ${showAutomation ? "text-amber-500 bg-amber-500/10" : "text-gray-400 hover:text-amber-500 hover:bg-amber-500/10"}`} title="Automation rules">
                 <Zap size={14} />
               </button>}
-              {canManageBoard && <button onClick={handleToggleGlobal} aria-pressed={Boolean(board.isGlobal)} className={`p-1.5 rounded-full transition ${board.isGlobal ? "text-brand bg-brand/10" : "text-gray-400 hover:text-brand hover:bg-brand/10"}`} title={board.isGlobal ? "On the Global board — click to remove" : "Show on the Global board"}>
+              {user?.isGlobalAdmin && <button onClick={handleTogglePublic} aria-pressed={Boolean(board.isGlobal)} className={`p-1.5 rounded-full transition ${board.isGlobal ? "text-brand bg-brand/10" : "text-gray-400 hover:text-brand hover:bg-brand/10"}`} title={board.isGlobal ? "Public — everyone can view. Click to make private." : "Private — click to make public (everyone can view)"}>
                 <Globe size={14} />
               </button>}
               <select
