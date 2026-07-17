@@ -231,8 +231,8 @@ export default function StaffStatsPage() {
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <Radio size={22} className="text-brand" /> Staff Online
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Radio size={22} className="text-brand" /> <span className="text-gradient">Staff Online</span>
             </h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
               Staff activity leaderboard &amp; trends {data?.selectedPeriod ? `— ${periodLabel(data.selectedPeriod)}` : ""}
@@ -342,8 +342,8 @@ export default function StaffStatsPage() {
               <AreaChart data={chartData}>
                 <defs>
                   <linearGradient id="staffPointsGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#6C4EF5" stopOpacity={0.22} />
-                    <stop offset="100%" stopColor="#6C4EF5" stopOpacity={0} />
+                    <stop offset="0%" stopColor="#ff5a30" stopOpacity={0.22} />
+                    <stop offset="100%" stopColor="#ff5a30" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="staffHoursGrad" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#12B76A" stopOpacity={0.18} />
@@ -359,7 +359,7 @@ export default function StaffStatsPage() {
                   formatter={(value: any, name: any) => name === "Activity Hours" ? [`${Number(value).toFixed(1)} h`, name] : [numberFormatter.format(Math.round(Number(value))), name]}
                 />
                 <Legend wrapperStyle={{ fontSize: "12px" }} />
-                <Area yAxisId="points" type="monotone" dataKey="points" name="Points" stroke="#6C4EF5" fill="url(#staffPointsGrad)" strokeWidth={2.5} />
+                <Area yAxisId="points" type="monotone" dataKey="points" name="Points" stroke="#ff5a30" fill="url(#staffPointsGrad)" strokeWidth={2.5} />
                 <Area yAxisId="hours" type="monotone" dataKey="hours" name="Activity Hours" stroke="#12B76A" fill="url(#staffHoursGrad)" strokeWidth={2.5} />
               </AreaChart>
             </ResponsiveContainer>

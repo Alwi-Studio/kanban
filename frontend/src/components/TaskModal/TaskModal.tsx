@@ -36,7 +36,7 @@ function attachmentIcon(fileName: string) {
   return File;
 }
 
-const colors = ["#6C4EF5", "#2ECC71", "#F5A623", "#E74C3C", "#8B5CF6", "#EC4899", "#3498DB", "#1ABC9C"];
+const colors = ["#ff5a30", "#2ECC71", "#F5A623", "#E74C3C", "#8B5CF6", "#EC4899", "#3498DB", "#1ABC9C"];
 
 function hashCode(str: string) {
   let hash = 0;
@@ -230,7 +230,7 @@ export default function TaskModal({ task, board, onClose, onUpdate, canEdit = tr
                 onChange={e => setDueDate(e.target.value)}
                 onBlur={() => handleSave()}
                 disabled={!canEdit}
-                className="text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-full px-3 py-1.5 outline-none focus:ring-2 focus:ring-[#6C4EF5]/30"
+                className="text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-full px-3 py-1.5 outline-none focus:ring-2 focus:ring-[#ff5a30]/30"
               />
             </div>
 

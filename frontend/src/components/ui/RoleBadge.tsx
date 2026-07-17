@@ -13,8 +13,8 @@ interface RoleMeta {
 // Each role maps to a design-token color, an icon, and a plain-language tooltip
 // so "who has admin" is legible at a glance anywhere a member is shown.
 const ROLE_META: Record<RoleKey, RoleMeta> = {
-  global: { label: "Global admin", color: "#6C4EF5", Icon: Crown, title: "Full access to every board and the admin panel" },
-  owner: { label: "Owner", color: "#6C4EF5", Icon: Crown, title: "Board owner" },
+  global: { label: "Global admin", color: "#ff5a30", Icon: Crown, title: "Full access to every board and the admin panel" },
+  owner: { label: "Owner", color: "#ff5a30", Icon: Crown, title: "Board owner" },
   admin: { label: "Admin", color: "#F5A623", Icon: ShieldCheck, title: "Can manage this board, its members and settings" },
   pm: { label: "PM", color: "#3B82F6", Icon: Briefcase, title: "Can create and edit tasks" },
   member: { label: "Member", color: "#2ECC71", Icon: UserIcon, title: "Can create and edit tasks" },

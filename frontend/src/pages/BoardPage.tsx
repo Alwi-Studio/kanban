@@ -212,11 +212,11 @@ export default function BoardPage() {
   const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [newLabelName, setNewLabelName] = useState("");
   const [newLabelDesc, setNewLabelDesc] = useState("");
-  const [newLabelColor, setNewLabelColor] = useState("#6C4EF5");
+  const [newLabelColor, setNewLabelColor] = useState("#ff5a30");
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
   const [editLabelName, setEditLabelName] = useState("");
   const [editLabelDesc, setEditLabelDesc] = useState("");
-  const [editLabelColor, setEditLabelColor] = useState("#6C4EF5");
+  const [editLabelColor, setEditLabelColor] = useState("#ff5a30");
   const [newTaskTitles, setNewTaskTitles] = useState<Record<string, string>>({});
   const [search, setSearch] = useState("");
   const [filterLabel, setFilterLabel] = useState("");
@@ -466,7 +466,7 @@ export default function BoardPage() {
     try {
       const label = await createLabel(id, newLabelName.trim(), newLabelColor, newLabelDesc.trim());
       addLabelToBoard(label);
-      setNewLabelName(""); setNewLabelDesc(""); setNewLabelColor("#6C4EF5");
+      setNewLabelName(""); setNewLabelDesc(""); setNewLabelColor("#ff5a30");
       toast(`Label created`, "success");
     } catch (error: any) { toast(apiError(error, "Failed to create label"), "error"); }
   };
@@ -480,7 +480,7 @@ export default function BoardPage() {
 
   const cancelEditLabel = () => {
     setEditingLabelId(null);
-    setEditLabelName(""); setEditLabelDesc(""); setEditLabelColor("#6C4EF5");
+    setEditLabelName(""); setEditLabelDesc(""); setEditLabelColor("#ff5a30");
   };
 
   const handleSaveLabel = async () => {
@@ -782,7 +782,7 @@ export default function BoardPage() {
                   </h1>
                 )}
                 {canManageBoard && <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
-                  <button onClick={() => { skipBoardNameBlurRef.current = false; setEditingBoard(true); setBoardNameValue(board.name); }} className="p-1 rounded text-gray-300 dark:text-gray-600 hover:text-[#6C4EF5] hover:bg-[#6C4EF5]/10 transition" title="Rename">
+                  <button onClick={() => { skipBoardNameBlurRef.current = false; setEditingBoard(true); setBoardNameValue(board.name); }} className="p-1 rounded text-gray-300 dark:text-gray-600 hover:text-[#ff5a30] hover:bg-[#ff5a30]/10 transition" title="Rename">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
                   </button>
                   <button onClick={handleDeleteBoardAction} className="p-1 rounded text-gray-300 dark:text-gray-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition" title="Delete">
@@ -791,7 +791,7 @@ export default function BoardPage() {
                 </div>}
               </div>
               <div className="flex items-center gap-1.5 mt-1">
-                <button onClick={() => navigate("/")} className="text-[11px] text-gray-400 hover:text-[#6C4EF5] transition">Home</button>
+                <button onClick={() => navigate("/")} className="text-[11px] text-gray-400 hover:text-[#ff5a30] transition">Home</button>
                 <span className="text-gray-300 dark:text-gray-600 text-[11px]">/</span>
                 <span className="text-[11px] text-gray-600 dark:text-gray-300 font-medium">{board.name}</span>
               </div>
@@ -803,7 +803,7 @@ export default function BoardPage() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               {board.members?.slice(0, 4).map((m, i) => (
-                <div key={m.id} className="w-6 h-6 rounded-full bg-[#6C4EF5] flex items-center justify-center text-white text-[9px] font-medium -ml-1 first:ml-0 border-2 border-white dark:border-surface-dark" style={{ zIndex: 4 - i }}>
+                <div key={m.id} className="w-6 h-6 rounded-full bg-[#ff5a30] flex items-center justify-center text-white text-[9px] font-medium -ml-1 first:ml-0 border-2 border-white dark:border-surface-dark" style={{ zIndex: 4 - i }}>
                   {m.user.name.charAt(0)}
                 </div>
               ))}
@@ -822,13 +822,13 @@ export default function BoardPage() {
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     placeholder="Search tasks..."
-                    className="pl-8 pr-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-100 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-[#6C4EF5]/20 w-48"
+                    className="pl-8 pr-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-xs text-gray-700 dark:text-gray-100 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-[#ff5a30]/20 w-48"
                     onBlur={() => { if (!search) setShowSearchInput(false); }}
                     onKeyDown={e => e.key === "Escape" && setShowSearchInput(false)}
                   />
                 </div>
               ) : (
-                <button onClick={() => setShowSearchInput(true)} className="p-1.5 rounded-full text-gray-400 hover:text-[#6C4EF5] hover:bg-[#6C4EF5]/10 transition" title="Search">
+                <button onClick={() => setShowSearchInput(true)} className="p-1.5 rounded-full text-gray-400 hover:text-[#ff5a30] hover:bg-[#ff5a30]/10 transition" title="Search">
                   <Search size={14} />
                 </button>
               )}
@@ -843,7 +843,7 @@ export default function BoardPage() {
                   <Plus size={14} /> <span className="hidden sm:inline">New task</span>
                 </button>
                 {showNewTask && (
-                  <div className="absolute right-0 top-full mt-1.5 bg-white dark:bg-[#1D2939] rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg w-64 z-20 p-3 animate-scale-in">
+                  <div className="absolute right-0 top-full mt-1.5 bg-white dark:bg-[#141418] rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg w-64 z-20 p-3 animate-scale-in">
                     <input
                       value={newTaskTitleInput}
                       onChange={e => setNewTaskTitleInput(e.target.value)}
@@ -878,7 +878,7 @@ export default function BoardPage() {
                   onClick={() => setActiveTab(tab.key)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${
                     activeTab === tab.key
-                      ? "bg-[#6C4EF5]/10 text-[#6C4EF5]"
+                      ? "bg-[#ff5a30]/10 text-[#ff5a30]"
                       : "text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                   }`}
                 >
@@ -888,7 +888,7 @@ export default function BoardPage() {
               ))}
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition ${hasActiveFilters ? "text-[#6C4EF5] bg-[#6C4EF5]/10" : "text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`} title="Filters">
+              <button onClick={() => setShowFilters(!showFilters)} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition ${hasActiveFilters ? "text-[#ff5a30] bg-[#ff5a30]/10" : "text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`} title="Filters">
                 <Filter size={14} /> Filters
               </button>
               <button onClick={() => setShowLog(!showLog)} className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition" title="Activity Log">
@@ -967,14 +967,14 @@ export default function BoardPage() {
                   />
                 ))}
                 {canManageBoard && !showNewCol && (
-                  <button onClick={() => setShowNewCol(true)} className="card p-3 w-72 shrink-0 self-start flex items-center justify-center gap-2 text-gray-400 hover:text-[#6C4EF5] hover:border-[#6C4EF5]/30 border-2 border-dashed border-gray-300 dark:border-gray-600 transition-all duration-200 min-h-[80px] rounded-2xl">
+                  <button onClick={() => setShowNewCol(true)} className="card p-3 w-72 shrink-0 self-start flex items-center justify-center gap-2 text-gray-400 hover:text-[#ff5a30] hover:border-[#ff5a30]/30 border-2 border-dashed border-gray-300 dark:border-gray-600 transition-all duration-200 min-h-[80px] rounded-2xl">
                     <Plus size={16} />
                     <span className="text-sm font-medium">Add Column</span>
                   </button>
                 )}
                 {canManageBoard && showNewCol && (
-                  <div className="card p-4 w-72 shrink-0 self-start border-2 border-dashed border-[#6C4EF5]/30 bg-[#6C4EF5]/5">
-                    <h3 className="text-xs font-semibold text-[#6C4EF5] mb-3">Add Column</h3>
+                  <div className="card p-4 w-72 shrink-0 self-start border-2 border-dashed border-[#ff5a30]/30 bg-[#ff5a30]/5">
+                    <h3 className="text-xs font-semibold text-[#ff5a30] mb-3">Add Column</h3>
                     <input value={newColName} onChange={e => setNewColName(e.target.value)} placeholder="Column name" className="input text-sm mb-2" autoFocus onKeyDown={e => e.key === 'Enter' && handleAddColumn()} />
                     <div className="flex gap-2">
                       <button onClick={handleAddColumn} className="btn-primary text-xs flex-1">Create</button>
@@ -1021,7 +1021,7 @@ export default function BoardPage() {
             {board.members?.map(m => (
               <div key={m.id} className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-full bg-[#6C4EF5] flex items-center justify-center text-white text-xs font-medium shrink-0">{m.user.name.charAt(0)}</div>
+                  <div className="w-7 h-7 rounded-full bg-[#ff5a30] flex items-center justify-center text-white text-xs font-medium shrink-0">{m.user.name.charAt(0)}</div>
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">{m.user.name}</p>
                     <p className="text-xs text-gray-400">{m.user.email}</p>
@@ -1095,7 +1095,7 @@ export default function BoardPage() {
             <div className="space-y-1.5">
               {board.labels?.map(l => (
                 editingLabelId === l.id ? (
-                  <div key={l.id} className="rounded-xl border border-[#6C4EF5]/40 bg-[#6C4EF5]/5 p-3 space-y-2">
+                  <div key={l.id} className="rounded-xl border border-[#ff5a30]/40 bg-[#ff5a30]/5 p-3 space-y-2">
                     <div className="flex gap-2">
                       <input value={editLabelName} onChange={e => setEditLabelName(e.target.value)} placeholder="Label name" maxLength={50} className="input flex-1 text-sm" onKeyDown={e => e.key === 'Enter' && handleSaveLabel()} />
                       <input type="color" value={editLabelColor} onChange={e => setEditLabelColor(e.target.value)} className="w-9 h-9 rounded cursor-pointer shrink-0" title="Label color" aria-label="Label color" />
@@ -1113,7 +1113,7 @@ export default function BoardPage() {
                       {l.description && <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 break-words">{l.description}</p>}
                     </div>
                     <div className="flex items-center gap-0.5 shrink-0">
-                      <button onClick={() => startEditLabel(l)} className="text-gray-400 hover:text-[#6C4EF5] p-1 rounded" aria-label="Edit label" title="Edit"><Pencil size={11} /></button>
+                      <button onClick={() => startEditLabel(l)} className="text-gray-400 hover:text-[#ff5a30] p-1 rounded" aria-label="Edit label" title="Edit"><Pencil size={11} /></button>
                       <button onClick={() => handleDeleteLabel(l.id, l.name)} className="text-gray-400 hover:text-red-500 p-1 rounded" aria-label="Delete label" title="Delete"><X size={12} /></button>
                     </div>
                   </div>
@@ -1140,8 +1140,8 @@ export default function BoardPage() {
             const labelTrigger = form.triggerType === "LABEL_ADDED" || form.triggerType === "LABEL_REMOVED";
             const members = board.members ?? [];
             return (
-              <div className={`rounded-xl border p-3 space-y-3 ${editingRuleId ? "bg-[#6C4EF5]/5 border-[#6C4EF5]/40" : "bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700"}`}>
-                {editingRuleId && <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#6C4EF5]"><Pencil size={11} /> Editing rule</div>}
+              <div className={`rounded-xl border p-3 space-y-3 ${editingRuleId ? "bg-[#ff5a30]/5 border-[#ff5a30]/40" : "bg-gray-50 dark:bg-gray-800/60 border-gray-200 dark:border-gray-700"}`}>
+                {editingRuleId && <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-[#ff5a30]"><Pencil size={11} /> Editing rule</div>}
                 <input value={form.name} onChange={event => setAutomationForm(f => ({ ...f, name: event.target.value }))} placeholder="Rule name (optional)" className="input text-xs" />
 
                 <div className="space-y-1.5">
@@ -1167,7 +1167,7 @@ export default function BoardPage() {
                 <div className="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Only if (all match)</label>
-                    <button type="button" onClick={addCondition} className="flex items-center gap-1 text-[10px] font-semibold text-[#6C4EF5] hover:underline"><Plus size={11} /> Condition</button>
+                    <button type="button" onClick={addCondition} className="flex items-center gap-1 text-[10px] font-semibold text-[#ff5a30] hover:underline"><Plus size={11} /> Condition</button>
                   </div>
                   {form.conditions.map((c, i) => (
                     <div key={i} className="rounded-lg bg-white dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 p-2 space-y-1.5">
@@ -1206,7 +1206,7 @@ export default function BoardPage() {
                 <div className="pt-2 border-t border-gray-200 dark:border-gray-700 space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">Then do</label>
-                    <button type="button" onClick={addAction} className="flex items-center gap-1 text-[10px] font-semibold text-[#6C4EF5] hover:underline"><Plus size={11} /> Action</button>
+                    <button type="button" onClick={addAction} className="flex items-center gap-1 text-[10px] font-semibold text-[#ff5a30] hover:underline"><Plus size={11} /> Action</button>
                   </div>
                   {form.actions.map((a, i) => (
                     <div key={i} className="rounded-lg bg-white dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 p-2 space-y-1.5">
@@ -1234,7 +1234,7 @@ export default function BoardPage() {
                         <div className="flex flex-wrap gap-1.5">
                           {members.length ? members.map(m => {
                             const active = a.userIds.includes(m.userId);
-                            return <button key={m.userId} type="button" onClick={() => toggleActionId(i, "userIds", m.userId)} className={`text-[11px] px-2 py-0.5 rounded-full border transition ${active ? "bg-[#6C4EF5] text-white border-transparent" : "text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-gray-400"}`}>{m.user.name}</button>;
+                            return <button key={m.userId} type="button" onClick={() => toggleActionId(i, "userIds", m.userId)} className={`text-[11px] px-2 py-0.5 rounded-full border transition ${active ? "bg-[#ff5a30] text-white border-transparent" : "text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-gray-400"}`}>{m.user.name}</button>;
                           }) : <span className="text-[11px] text-gray-400">No members</span>}
                         </div>
                       )}
@@ -1281,15 +1281,15 @@ export default function BoardPage() {
                   ? `${rule.triggerLabel?.name ?? "?"} ${rule.triggerType === "LABEL_ADDED" ? "added" : "removed"}`
                   : base;
               return (
-                <div key={rule.id} className={`rounded-xl border p-3 ${editingRuleId === rule.id ? "border-[#6C4EF5] ring-1 ring-[#6C4EF5]/40 bg-[#6C4EF5]/5" : rule.enabled ? "border-amber-200 dark:border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/5" : "border-gray-200 dark:border-gray-700 opacity-60"}`}>
+                <div key={rule.id} className={`rounded-xl border p-3 ${editingRuleId === rule.id ? "border-[#ff5a30] ring-1 ring-[#ff5a30]/40 bg-[#ff5a30]/5" : rule.enabled ? "border-amber-200 dark:border-amber-500/20 bg-amber-50/50 dark:bg-amber-500/5" : "border-gray-200 dark:border-gray-700 opacity-60"}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="text-xs leading-5">
                       {rule.name && <div className="font-semibold text-gray-800 dark:text-gray-100">{rule.name}</div>}
                       <span className="text-gray-400">When </span><span className="font-semibold text-gray-700 dark:text-gray-200">{triggerText}</span>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => startEditAutomation(rule)} className="text-gray-400 hover:text-[#6C4EF5]" aria-label="Edit automation" title="Edit"><Pencil size={12} /></button>
-                      <button onClick={() => handleDuplicateAutomation(rule)} className="text-gray-400 hover:text-[#6C4EF5]" aria-label="Duplicate automation" title="Duplicate"><Copy size={12} /></button>
+                      <button onClick={() => startEditAutomation(rule)} className="text-gray-400 hover:text-[#ff5a30]" aria-label="Edit automation" title="Edit"><Pencil size={12} /></button>
+                      <button onClick={() => handleDuplicateAutomation(rule)} className="text-gray-400 hover:text-[#ff5a30]" aria-label="Duplicate automation" title="Duplicate"><Copy size={12} /></button>
                       <button onClick={() => handleDeleteAutomation(rule.id)} className="text-gray-400 hover:text-red-500" aria-label="Delete automation" title="Delete"><X size={13} /></button>
                     </div>
                   </div>

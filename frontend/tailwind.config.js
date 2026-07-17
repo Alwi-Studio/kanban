@@ -8,31 +8,32 @@ export default {
   theme: {
     extend: {
       colors: {
+        // AlwiNation brand — warm orange accent
         brand: {
-          DEFAULT: "#6C4EF5",
-          50: "#EEEBFF",
-          100: "#D4CCFF",
-          200: "#B099FF",
-          300: "#8B66FF",
-          400: "#6C4EF5",
-          500: "#5A3FD6",
-          600: "#4A33B5",
-          700: "#3A2894",
-          800: "#2A1D73",
-          900: "#1A1252",
+          DEFAULT: "#FF5A30",
+          50: "#FFF1EC",
+          100: "#FFE0D5",
+          200: "#FFB79E",
+          300: "#FF9147",
+          400: "#FF5A30",
+          500: "#E8461D",
+          600: "#C43A17",
+          700: "#9E2E12",
+          800: "#78230E",
+          900: "#52170A",
         },
         purple: {
-          brand: "#6C4EF5",
+          brand: "#FF5A30",
         },
         "col-orange": "#F5A623",
         "col-green": "#2ECC71",
         surface: {
           DEFAULT: "#FFFFFF",
-          dark: "#1D2939",
+          dark: "#141418",
         },
         bg: {
           page: "#F5F6FA",
-          dark: "#101828",
+          dark: "#0b0b0e",
         },
       },
       fontFamily: {

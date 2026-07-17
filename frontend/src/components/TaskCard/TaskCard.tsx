@@ -28,7 +28,7 @@ const labelColors: Record<string, string> = {
 
 function getLabelClass(colorHex: string) {
   const hex = colorHex.toLowerCase();
-  if (hex.includes("purple") || hex === "#8b5cf6" || hex === "#6c4ef5") return labelColors.purple;
+  if (hex.includes("purple") || hex === "#8b5cf6" || hex === "#ff5a30") return labelColors.purple;
   if (hex.includes("orange") || hex === "#f5a623") return labelColors.orange;
   if (hex.includes("yellow") || hex === "#f79009") return labelColors.yellow;
   if (hex.includes("red") || hex === "#f04438" || hex === "#e74c3c") return labelColors.red;
@@ -81,7 +81,7 @@ export default function TaskCard({ task, onDelete, onClick, labels, onAddLabel, 
       className={`group relative rounded-xl border p-3.5 ${disabled ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"} transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md focus-visible:border-brand ${
         isCompleted
           ? "bg-emerald-50/60 dark:bg-emerald-500/5 border-emerald-300/70 dark:border-emerald-500/30 hover:border-emerald-400"
-          : "bg-white dark:bg-[#1D2939] border-gray-200/80 dark:border-gray-700 hover:border-brand/30"
+          : "bg-white dark:bg-[#141418] border-gray-200/80 dark:border-gray-700 hover:border-brand/30"
       } ${isDragOverlay ? "shadow-xl scale-[1.02] rotate-[1deg]" : "shadow-sm"}`}
     >
       {onDelete && !isDragOverlay && (

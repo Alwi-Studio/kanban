@@ -6,7 +6,7 @@ import { Plus, MoreHorizontal, Trash2, GripVertical } from "lucide-react";
 import TaskCard from "../TaskCard/TaskCard";
 import type { Column, Task, Label } from "../../types";
 
-const COLORS = ["#6C4EF5", "#F5A623", "#2ECC71", "#E74C3C", "#3498DB", "#9B59B6", "#1ABC9C", "#E67E22"];
+const COLORS = ["#ff5a30", "#F5A623", "#2ECC71", "#E74C3C", "#3498DB", "#9B59B6", "#1ABC9C", "#E67E22"];
 
 interface ColumnViewProps {
   column: Column;
@@ -107,7 +107,7 @@ export default function ColumnView({
     <div
       ref={setDragRef}
       style={dragStyle}
-      className={`w-[19rem] shrink-0 flex flex-col max-h-full rounded-2xl border p-3 transition-colors ${isOver ? "border-brand bg-brand/5 dark:bg-brand/10" : "border-gray-200 dark:border-gray-700 bg-gray-100/70 dark:bg-[#161B26]"}`}
+      className={`w-[19rem] shrink-0 flex flex-col max-h-full rounded-2xl border p-3 transition-colors ${isOver ? "border-brand bg-brand/5 dark:bg-brand/10" : "border-gray-200 dark:border-gray-700 bg-gray-100/70 dark:bg-[#141418]"}`}
     >
       <div
         className="flex items-center justify-between px-3.5 py-2.5 rounded-xl mb-3 shadow-sm"

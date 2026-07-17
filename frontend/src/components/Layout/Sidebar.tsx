@@ -64,10 +64,10 @@ export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   return (
     <>
       {mobileOpen && <button aria-label="Close navigation" onClick={onClose} className="fixed inset-0 z-40 bg-gray-950/40 md:hidden" />}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-[#161B26] flex flex-col border-r border-gray-200 dark:border-gray-800 transition-transform md:static md:translate-x-0 md:flex ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-[#141418] flex flex-col border-r border-gray-200 dark:border-gray-800 transition-transform md:static md:translate-x-0 md:flex ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex items-center gap-2 px-5 h-16 border-b border-gray-100 dark:border-gray-700">
-          <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center text-white text-sm font-bold shrink-0">A</div>
-          <span className="font-bold text-base text-[#1A1A2E] dark:text-white flex-1">AlwiStudio</span>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#ff5a30] to-[#ff9147] flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-sm shadow-brand/30">A</div>
+          <span className="font-bold text-base text-gradient flex-1">AlwiStudio</span>
           <button onClick={onClose} className="p-1 text-gray-400 md:hidden" aria-label="Close navigation"><X size={19} /></button>
         </div>
 

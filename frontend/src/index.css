@@ -20,19 +20,19 @@
     --text-secondary: #8A8FA3;
     --border-subtle: #E4E7EC;
     --chart-tooltip: #FFFFFF;
-    --brand-purple: #6C4EF5;
+    --brand-purple: #ff5a30;
     --col-orange: #F5A623;
     --col-green: #2ECC71;
   }
 
   .dark {
-    --bg-page: #0C111D;
-    --bg-sidebar: #161B26;
-    --bg-card: #1D2939;
+    --bg-page: #0b0b0e;
+    --bg-sidebar: #141418;
+    --bg-card: #141418;
     --text-primary: #F2F4F7;
     --text-secondary: #B0B8C4;
-    --border-subtle: #344054;
-    --chart-tooltip: #1D2939;
+    --border-subtle: #262630;
+    --chart-tooltip: #141418;
     color-scheme: dark;
   }
 
@@ -42,11 +42,11 @@
   }
 
   ::selection {
-    background: rgb(108 78 245 / 0.28);
+    background: rgb(255 90 48 / 0.28);
   }
 
   :focus-visible {
-    outline: 2px solid rgb(108 78 245 / 0.7);
+    outline: 2px solid rgb(255 90 48 / 0.7);
     outline-offset: 2px;
   }
 
@@ -58,16 +58,33 @@
 
 @layer components {
   .card {
-    @apply bg-white dark:bg-[#1D2939] rounded-2xl border border-gray-200/80 dark:border-gray-700 shadow-sm;
+    @apply bg-white dark:bg-[#141418] rounded-2xl border border-gray-200/80 dark:border-[#23232c] shadow-sm;
   }
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 bg-[#6C4EF5] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-[#5A3FD6] active:scale-[0.98] transition disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 bg-[#ff5a30] text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-[#e8461d] active:scale-[0.98] transition disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  /* AlwiNation signatures: gradient wordmark/headings + orange eyebrow label */
+  .text-gradient {
+    background: linear-gradient(120deg, var(--text-primary) 20%, #ff9147 62%, #ff5a30);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-brand-300;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 22px;
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #ff5a30, transparent);
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 bg-white dark:bg-[#1D2939] text-gray-700 dark:text-gray-200 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-[0.98] transition;
+    @apply inline-flex items-center justify-center gap-2 bg-white dark:bg-[#141418] text-gray-700 dark:text-gray-200 px-4 py-2 rounded-xl text-sm font-semibold border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 active:scale-[0.98] transition;
   }
   .input {
-    @apply w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3.5 py-2 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-[#6C4EF5]/30 focus:border-[#6C4EF5] transition;
+    @apply w-full rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3.5 py-2 text-sm text-gray-800 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-[#ff5a30]/30 focus:border-[#ff5a30] transition;
   }
   .animate-slide-up {
     animation: slideUp 0.3s ease-out;

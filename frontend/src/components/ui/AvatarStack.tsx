@@ -4,7 +4,7 @@ interface AvatarStackProps {
   size?: "sm" | "md";
 }
 
-const colors = ["#6C4EF5", "#2ECC71", "#F5A623", "#E74C3C", "#8B5CF6", "#EC4899", "#3498DB", "#1ABC9C"];
+const colors = ["#ff5a30", "#2ECC71", "#F5A623", "#E74C3C", "#8B5CF6", "#EC4899", "#3498DB", "#1ABC9C"];
 
 function hashCode(str: string) {
   let hash = 0;

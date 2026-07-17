@@ -45,11 +45,12 @@ export default function App() {
   const setLoading = useAuthStore(s => s.setLoading);
 
   useEffect(() => {
+    // Dark is the default (AlwiNation is dark-first); only an explicit "false" opts out.
     const stored = localStorage.getItem("darkMode");
-    if (stored === "true") {
-      document.documentElement.classList.add("dark");
-    } else if (stored === "false") {
+    if (stored === "false") {
       document.documentElement.classList.remove("dark");
+    } else {
+      document.documentElement.classList.add("dark");
     }
   }, []);
 

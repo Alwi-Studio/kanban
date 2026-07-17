@@ -168,7 +168,7 @@ export default function DashboardPage() {
           <div className="relative w-[150px] h-[150px]">
             <svg width="150" height="150" viewBox="0 0 150 150" className="-rotate-90">
               <circle cx="75" cy="75" r="52" fill="none" strokeWidth="13" className="stroke-gray-100 dark:stroke-gray-800" />
-              <circle cx="75" cy="75" r="52" fill="none" strokeWidth="13" stroke="#6C4EF5" strokeLinecap="round"
+              <circle cx="75" cy="75" r="52" fill="none" strokeWidth="13" stroke="#ff5a30" strokeLinecap="round"
                 strokeDasharray={circumference} strokeDashoffset={dashOffset} style={{ transition: "stroke-dashoffset 0.7s ease" }} />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -309,7 +309,7 @@ export default function DashboardPage() {
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+            <h1 className="text-2xl font-bold text-gradient">Dashboard</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{statsView === "personal" ? "Tasks assigned to you" : `${stats?.boardCount || 0} boards in ${stats?.scope === "organization" ? "the organization" : "your accessible workspace"}`}</p>
           </div>
           <div className="inline-flex self-start sm:self-auto rounded-xl bg-gray-100 dark:bg-gray-800 p-1">
@@ -355,8 +355,8 @@ export default function DashboardPage() {
                 <AreaChart data={filteredTrends}>
                   <defs>
                     <linearGradient id="completedGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#6C4EF5" stopOpacity={0.2} />
-                        <stop offset="100%" stopColor="#6C4EF5" stopOpacity={0} />
+                        <stop offset="0%" stopColor="#ff5a30" stopOpacity={0.2} />
+                        <stop offset="100%" stopColor="#ff5a30" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="createdGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#12B76A" stopOpacity={0.15} />
@@ -385,7 +385,7 @@ export default function DashboardPage() {
                     labelFormatter={(v) => new Date(v).toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "short" })}
                   />
                   <Area type="monotone" dataKey="created" stroke="#12B76A" fill="url(#createdGrad)" strokeWidth={2} name="Created" />
-                    <Area type="monotone" dataKey="completed" stroke="#6C4EF5" fill="url(#completedGrad)" strokeWidth={2} name="Completed" />
+                    <Area type="monotone" dataKey="completed" stroke="#ff5a30" fill="url(#completedGrad)" strokeWidth={2} name="Completed" />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
@@ -490,15 +490,15 @@ export default function DashboardPage() {
                     <AreaChart data={staffChartData}>
                       <defs>
                         <linearGradient id="staffOverviewGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#6C4EF5" stopOpacity={0.2} />
-                          <stop offset="100%" stopColor="#6C4EF5" stopOpacity={0} />
+                          <stop offset="0%" stopColor="#ff5a30" stopOpacity={0.2} />
+                          <stop offset="100%" stopColor="#ff5a30" stopOpacity={0} />
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
                       <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#9CA3AF" }} interval="preserveStartEnd" />
                       <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: "#9CA3AF" }} width={32} />
                       <Tooltip contentStyle={{ background: "var(--chart-tooltip)", color: "var(--text-primary)", border: "1px solid var(--border-subtle)", borderRadius: "8px", fontSize: "12px" }} />
-                      <Area type="monotone" dataKey="points" name="Points" stroke="#6C4EF5" fill="url(#staffOverviewGrad)" strokeWidth={2} />
+                      <Area type="monotone" dataKey="points" name="Points" stroke="#ff5a30" fill="url(#staffOverviewGrad)" strokeWidth={2} />
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (

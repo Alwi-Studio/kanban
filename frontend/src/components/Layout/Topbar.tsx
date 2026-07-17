@@ -100,18 +100,18 @@ export default function Topbar() {
           {unread > 0 && <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-red-500 text-white text-[8px] rounded-full flex items-center justify-center font-medium">{unread}</span>}
         </button>
         {showNotif && (
-          <div className="notif-panel absolute top-full right-0 mt-2 bg-white dark:bg-[#1D2939] rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg w-72 z-50 max-h-72 overflow-y-auto">
+          <div className="notif-panel absolute top-full right-0 mt-2 bg-white dark:bg-[#141418] rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg w-72 z-50 max-h-72 overflow-y-auto">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
               <span className="text-xs font-semibold text-[#1A1A2E] dark:text-white">Notifications</span>
-              {unread > 0 && <button onClick={handleMarkAllRead} className="text-[#6C4EF5] text-[10px] font-medium">Mark all read</button>}
+              {unread > 0 && <button onClick={handleMarkAllRead} className="text-[#ff5a30] text-[10px] font-medium">Mark all read</button>}
             </div>
             {notifs.length === 0 && <p className="text-gray-400 text-xs text-center py-6">No notifications</p>}
             {notifs.map(n => (
-              <div key={n.id} className={`px-4 py-3 text-xs border-b border-gray-100 dark:border-gray-700 last:border-0 ${n.isRead ? "" : "bg-[#6C4EF5]/5"}`}>
+              <div key={n.id} className={`px-4 py-3 text-xs border-b border-gray-100 dark:border-gray-700 last:border-0 ${n.isRead ? "" : "bg-[#ff5a30]/5"}`}>
                 <p className={n.isRead ? "text-gray-500 dark:text-gray-400" : "text-gray-800 dark:text-gray-100"}>{n.message}</p>
                 <div className="flex items-center justify-between mt-1">
                   <span className="text-gray-400 text-[10px]">{new Date(n.createdAt).toLocaleDateString()}</span>
-                  {!n.isRead && <button onClick={() => handleMarkRead(n.id)} className="text-[#6C4EF5] text-[10px]">Read</button>}
+                  {!n.isRead && <button onClick={() => handleMarkRead(n.id)} className="text-[#ff5a30] text-[10px]">Read</button>}
                 </div>
               </div>
             ))}
@@ -121,12 +121,12 @@ export default function Topbar() {
 
       <div className="relative user-btn">
         <button onClick={() => setShowUserMenu(!showUserMenu)} className="flex items-center gap-2 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-          <div className="w-7 h-7 rounded-full bg-[#6C4EF5] flex items-center justify-center text-white text-[11px] font-medium">
+          <div className="w-7 h-7 rounded-full bg-[#ff5a30] flex items-center justify-center text-white text-[11px] font-medium">
             {user?.name?.charAt(0) || "U"}
           </div>
         </button>
         {showUserMenu && (
-          <div className="user-panel absolute top-full right-0 mt-2 bg-white dark:bg-[#1D2939] rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg w-44 z-50 py-1 overflow-hidden">
+          <div className="user-panel absolute top-full right-0 mt-2 bg-white dark:bg-[#141418] rounded-2xl border border-gray-200 dark:border-gray-700 shadow-lg w-44 z-50 py-1 overflow-hidden">
             <div className="px-4 py-2.5 border-b border-gray-100 dark:border-gray-700">
               <p className="text-xs font-medium text-[#1A1A2E] dark:text-white">{user?.name}</p>
               <p className="text-[10px] text-gray-400 truncate">{user?.email}</p>
