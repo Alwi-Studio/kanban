@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, ListTodo, CheckCircle2, AlertCircle, Trophy, Layers, Clock, ArrowRight, TrendingUp, TrendingDown, Radio, Users, CalendarDays } from "lucide-react";
+import { LayoutDashboard, ListTodo, CheckCircle2, AlertCircle, Trophy, Layers, Clock, ArrowRight, TrendingUp, TrendingDown, Radio, Users, CalendarDays, Target } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { getDashboardStats } from "../services/board";
 import { getStaffStatistics } from "../services/statistics";
@@ -148,6 +148,162 @@ export default function DashboardPage() {
     </div></Layout>;
   }
 
+  // Personal-view signature: a completion ring answering "how much of my work is done?"
+  const completionRing = (() => {
+    const total = view?.totalTasks ?? 0;
+    const done = view?.completedTasks ?? 0;
+    const overdue = view?.overdueTasks ?? 0;
+    const remaining = Math.max(0, total - done);
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    const circumference = 2 * Math.PI * 52;
+    const dashOffset = circumference * (1 - pct / 100);
+    return (
+      <div className="card p-6 flex flex-col">
+        <div className="flex items-center gap-2 mb-1">
+          <Target size={18} className="text-brand" />
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Completion Rate</h2>
+        </div>
+        <p className="text-xs text-gray-400 mb-4">Your finished tasks out of everything assigned</p>
+        <div className="flex-1 flex flex-col items-center justify-center">
+          <div className="relative w-[150px] h-[150px]">
+            <svg width="150" height="150" viewBox="0 0 150 150" className="-rotate-90">
+              <circle cx="75" cy="75" r="52" fill="none" strokeWidth="13" className="stroke-gray-100 dark:stroke-gray-800" />
+              <circle cx="75" cy="75" r="52" fill="none" strokeWidth="13" stroke="#6C4EF5" strokeLinecap="round"
+                strokeDasharray={circumference} strokeDashoffset={dashOffset} style={{ transition: "stroke-dashoffset 0.7s ease" }} />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-3xl font-bold text-gray-900 dark:text-white">{pct}%</span>
+              <span className="text-[11px] text-gray-400">{done} of {total} done</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 w-full mt-6">
+            <div className="rounded-xl bg-gray-50 dark:bg-gray-800/60 p-3 text-center">
+              <div className="text-lg font-bold text-gray-900 dark:text-white">{remaining}</div>
+              <div className="text-[10px] uppercase tracking-wide text-gray-400">Remaining</div>
+            </div>
+            <div className="rounded-xl bg-gray-50 dark:bg-gray-800/60 p-3 text-center">
+              <div className={`text-lg font-bold ${overdue ? "text-red-500" : "text-gray-900 dark:text-white"}`}>{overdue}</div>
+              <div className="text-[10px] uppercase tracking-wide text-gray-400">Overdue</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  })();
+
+  const distributionCard = (title: string, subtitle: string) => (
+    <div className="card p-6">
+      <div className="flex items-center gap-2 mb-1">
+        <Layers size={18} className="text-brand" />
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
+      </div>
+      <p className="text-xs text-gray-400 mb-4">{subtitle}</p>
+      {view && view.tasksPerColumn.length > 0 ? (
+        <div className="space-y-3">
+          {view.tasksPerColumn.map((tc) => (
+            <div key={tc.name}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm text-gray-700 dark:text-gray-300">{tc.name}</span>
+                <span className="text-xs font-medium text-gray-500">
+                  {tc.count} {tc.count === 1 ? "task" : "tasks"} <span className="text-gray-400">({tc.percentage}%)</span>
+                </span>
+              </div>
+              <ProgressBar value={tc.count} max={Math.max(...view.tasksPerColumn.map(t => t.count))} />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex items-center justify-center h-[200px] text-gray-400 text-sm">No tasks yet</div>
+      )}
+    </div>
+  );
+
+  const recentTasksCard = (title: string, subtitle: string) => (
+    <div className="card p-6">
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <Clock size={18} className="text-brand" />
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
+        </div>
+        {view && view.recentTasks.length > 0 && (
+          <button
+            onClick={() => { if (view.recentTasks[0]) navigate(`/board/${view.recentTasks[0].boardId}`); }}
+            className="text-xs text-brand hover:underline flex items-center gap-1"
+          >
+            View all <ArrowRight size={12} />
+          </button>
+        )}
+      </div>
+      <p className="text-xs text-gray-400 mb-4">{subtitle}</p>
+      {view && view.recentTasks.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 dark:border-gray-700">
+                <th className="text-left pb-2 font-medium text-gray-400 text-xs uppercase">Task</th>
+                <th className="text-left pb-2 font-medium text-gray-400 text-xs uppercase">Board</th>
+                <th className="text-left pb-2 font-medium text-gray-400 text-xs uppercase hidden sm:table-cell">Assignee</th>
+                <th className="text-left pb-2 font-medium text-gray-400 text-xs uppercase hidden md:table-cell">Deadline</th>
+              </tr>
+            </thead>
+            <tbody>
+              {view.recentTasks.slice(0, 5).map((t) => (
+                <tr
+                  key={t.id}
+                  onClick={() => navigate(`/board/${t.boardId}`)}
+                  className="border-b border-gray-50 dark:border-gray-800 last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition"
+                >
+                  <td className="py-2.5 pr-3">
+                    <span className="text-gray-800 dark:text-gray-200 font-medium">{t.title}</span>
+                    <span className="block text-xs text-gray-400">{t.columnName}</span>
+                  </td>
+                  <td className="py-2.5 pr-3 text-gray-500 text-xs">{t.boardName}</td>
+                  <td className="py-2.5 pr-3 hidden sm:table-cell">
+                    {t.assignees.length > 0 ? (
+                      <div className="flex -space-x-1.5">
+                        {t.assignees.slice(0, 3).map((a) => (
+                          <div
+                            key={a.id}
+                            className="w-6 h-6 rounded-full bg-brand text-white text-[10px] font-medium flex items-center justify-center ring-2 ring-white dark:ring-gray-800"
+                            title={a.name}
+                          >
+                            {a.name.charAt(0)}
+                          </div>
+                        ))}
+                        {t.assignees.length > 3 && (
+                          <span className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 text-[10px] font-medium flex items-center justify-center ring-2 ring-white dark:ring-gray-800">
+                            +{t.assignees.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
+                  </td>
+                  <td className="py-2.5 hidden md:table-cell">
+                    {t.dueDate ? (
+                      <span className={`text-xs font-medium ${
+                        new Date(t.dueDate) < new Date() ? "text-red-500" :
+                        new Date(t.dueDate).getTime() - Date.now() < 86400000 ? "text-yellow-500" :
+                        "text-gray-500"
+                      }`}>
+                        {new Date(t.dueDate).toLocaleDateString("en-US", { day: "numeric", month: "short" })}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <div className="flex items-center justify-center h-[200px] text-gray-400 text-sm">No tasks yet</div>
+      )}
+    </div>
+  );
+
   return (
     <Layout>
       <div className="max-w-7xl mx-auto space-y-6">
@@ -239,11 +395,13 @@ export default function DashboardPage() {
             )}
           </div>
 
+          {statsView === "personal" ? completionRing : (
           <div className="card p-6">
-            <div className="flex items-center gap-2 mb-5">
+            <div className="flex items-center gap-2 mb-1">
               <Trophy size={18} className="text-yellow-500" />
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Top Contributors</h2>
             </div>
+            <p className="text-xs text-gray-400 mb-4">Who's completing the most tasks</p>
             {view && view.topContributors.length > 0 ? (
               <div className="space-y-4">
                 {view.topContributors.map((c, i) => (
@@ -272,122 +430,20 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="card p-6">
-            <div className="flex items-center gap-2 mb-5">
-              <Layers size={18} className="text-brand" />
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Task Distribution by Column</h2>
-            </div>
-            {view && view.tasksPerColumn.length > 0 ? (
-              <div className="space-y-3">
-                {view.tasksPerColumn.map((tc) => (
-                  <div key={tc.name}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm text-gray-700 dark:text-gray-300">{tc.name}</span>
-                      <span className="text-xs font-medium text-gray-500">
-                        {tc.count} {tc.count === 1 ? "task" : "tasks"} <span className="text-gray-400">({tc.percentage}%)</span>
-                      </span>
-                    </div>
-                    <ProgressBar value={tc.count} max={Math.max(...view.tasksPerColumn.map(t => t.count))} />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-[200px] text-gray-400 text-sm">
-                No tasks yet
-              </div>
-            )}
+        {statsView === "personal" ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">{recentTasksCard("My Tasks", "Your assigned tasks, newest first")}</div>
+            {distributionCard("Where My Tasks Sit", "Your tasks across columns")}
           </div>
-
-          <div className="card p-6">
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2">
-                <Clock size={18} className="text-brand" />
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Tasks</h2>
-              </div>
-              {view && view.recentTasks.length > 0 && (
-                <button
-                  onClick={() => {
-                    if (view.recentTasks[0]) navigate(`/board/${view.recentTasks[0].boardId}`);
-                  }}
-                  className="text-xs text-brand hover:underline flex items-center gap-1"
-                >
-                  View all <ArrowRight size={12} />
-                </button>
-              )}
-            </div>
-            {view && view.recentTasks.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 dark:border-gray-700">
-                      <th className="text-left pb-2 font-medium text-gray-400 text-xs uppercase">Task</th>
-                      <th className="text-left pb-2 font-medium text-gray-400 text-xs uppercase">Board</th>
-                      <th className="text-left pb-2 font-medium text-gray-400 text-xs uppercase hidden sm:table-cell">Assignee</th>
-                      <th className="text-left pb-2 font-medium text-gray-400 text-xs uppercase hidden md:table-cell">Deadline</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {view.recentTasks.slice(0, 5).map((t) => (
-                      <tr
-                        key={t.id}
-                        onClick={() => navigate(`/board/${t.boardId}`)}
-                        className="border-b border-gray-50 dark:border-gray-800 last:border-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition"
-                      >
-                        <td className="py-2.5 pr-3">
-                          <span className="text-gray-800 dark:text-gray-200 font-medium">{t.title}</span>
-                          <span className="block text-xs text-gray-400">{t.columnName}</span>
-                        </td>
-                        <td className="py-2.5 pr-3 text-gray-500 text-xs">{t.boardName}</td>
-                        <td className="py-2.5 pr-3 hidden sm:table-cell">
-                          {t.assignees.length > 0 ? (
-                            <div className="flex -space-x-1.5">
-                              {t.assignees.slice(0, 3).map((a) => (
-                                <div
-                                  key={a.id}
-                                  className="w-6 h-6 rounded-full bg-brand text-white text-[10px] font-medium flex items-center justify-center ring-2 ring-white dark:ring-gray-800"
-                                  title={a.name}
-                                >
-                                  {a.name.charAt(0)}
-                                </div>
-                              ))}
-                              {t.assignees.length > 3 && (
-                                <span className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 text-[10px] font-medium flex items-center justify-center ring-2 ring-white dark:ring-gray-800">
-                                  +{t.assignees.length - 3}
-                                </span>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">—</span>
-                          )}
-                        </td>
-                        <td className="py-2.5 hidden md:table-cell">
-                          {t.dueDate ? (
-                            <span className={`text-xs font-medium ${
-                              new Date(t.dueDate) < new Date() ? "text-red-500" :
-                              new Date(t.dueDate).getTime() - Date.now() < 86400000 ? "text-yellow-500" :
-                              "text-gray-500"
-                            }`}>
-                              {new Date(t.dueDate).toLocaleDateString("en-US", { day: "numeric", month: "short" })}
-                            </span>
-                          ) : (
-                            <span className="text-gray-400">—</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-[200px] text-gray-400 text-sm">
-                No tasks yet
-              </div>
-            )}
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {distributionCard("Task Distribution by Column", "How work is spread across boards")}
+            {recentTasksCard("Recent Tasks", "Latest activity across your boards")}
           </div>
-        </div>
+        )}
 
         <div className="flex items-center gap-2 pt-1"><span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" /><span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Staff online</span><span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" /></div>
 
