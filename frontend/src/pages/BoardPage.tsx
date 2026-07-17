@@ -221,9 +221,11 @@ export default function BoardPage() {
   const [search, setSearch] = useState("");
   const [filterLabel, setFilterLabel] = useState("");
   const [filterAssignee, setFilterAssignee] = useState("");
+  const [quickFilter, setQuickFilter] = useState<"" | "mine" | "soon" | "overdue">("");
   const [activeTab, setActiveTab] = useState("status");
   const [sortBy, setSortBy] = useState("manual");
   const [showFilters, setShowFilters] = useState(false);
+  const filtersRestored = useRef(false);
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [showLog, setShowLog] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
@@ -328,6 +330,16 @@ export default function BoardPage() {
     if (filterLabel) tasks = tasks.filter(t => t.taskLabels.some(tl => tl.labelId === filterLabel));
     if (filterAssignee) tasks = tasks.filter(t => t.assignees.some(a => a.userId === filterAssignee));
 
+    if (quickFilter === "mine") tasks = tasks.filter(t => t.assignees.some(a => a.userId === user?.id));
+    else if (quickFilter === "soon" || quickFilter === "overdue") {
+      const now = Date.now();
+      tasks = tasks.filter(t => {
+        if (!t.dueDate || t.completedAt) return false;
+        const due = new Date(t.dueDate).getTime();
+        return quickFilter === "overdue" ? due < now : due >= now && due - now < 3 * 86400000;
+      });
+    }
+
     if (activeTab === "due") tasks = tasks.filter(t => t.dueDate);
     if (activeTab === "completed") tasks = tasks.filter(t => t.completedAt != null || col.name.toLowerCase() === "done");
 
@@ -335,10 +347,48 @@ export default function BoardPage() {
     else if (sortBy === "newest") tasks = [...tasks].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return tasks;
-  }, [search, filterLabel, filterAssignee, activeTab, sortBy]);
+  }, [search, filterLabel, filterAssignee, quickFilter, activeTab, sortBy, user?.id]);
 
-  const hasActiveFilters = search || filterLabel || filterAssignee || activeTab !== "status";
+  const hasActiveFilters = search || filterLabel || filterAssignee || quickFilter || activeTab !== "status";
   const canReorderTasks = canEditTasks && sortBy === "manual" && !hasActiveFilters;
+
+  // Remember filters per board so a board reopens in the same view.
+  useEffect(() => {
+    if (!id) return;
+    filtersRestored.current = false;
+    try {
+      const raw = localStorage.getItem(`board-filters:${id}`);
+      const f = raw ? JSON.parse(raw) : {};
+      setFilterLabel(f.filterLabel || "");
+      setFilterAssignee(f.filterAssignee || "");
+      setQuickFilter(f.quickFilter || "");
+      setActiveTab(f.activeTab || "status");
+      setSortBy(f.sortBy || "manual");
+    } catch { /* ignore corrupt prefs */ }
+    filtersRestored.current = true;
+  }, [id]);
+
+  useEffect(() => {
+    if (!id || !filtersRestored.current) return;
+    localStorage.setItem(`board-filters:${id}`, JSON.stringify({ filterLabel, filterAssignee, quickFilter, activeTab, sortBy }));
+  }, [id, filterLabel, filterAssignee, quickFilter, activeTab, sortBy]);
+
+  // `n` opens the new-task composer on the first column (when not typing).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable)) return;
+      if ((e.key === "n" || e.key === "N") && canEditTasks && !selectedTask && board?.columns.length) {
+        e.preventDefault();
+        setNewTaskColId(board.columns[0].id);
+        setNewTaskTitleInput("");
+        setShowNewTask(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [canEditTasks, selectedTask, board?.columns]);
 
   const handleDragStart = (event: DragStartEvent) => {
     if (!canEditTasks) return;
@@ -918,6 +968,20 @@ export default function BoardPage() {
             </div>
           </div>
 
+          <div className="flex items-center gap-1.5 mt-3 flex-wrap">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mr-0.5">Quick</span>
+            {([["mine", "My tasks"], ["soon", "Due soon"], ["overdue", "Overdue"]] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setQuickFilter(q => q === key ? "" : key)}
+                aria-pressed={quickFilter === key}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium transition ${quickFilter === key ? "bg-[#ff5a30]/10 text-[#ff5a30]" : "text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           {showFilters && (
             <div className="flex items-center gap-3 mt-3 flex-wrap">
               <select value={filterLabel} onChange={e => setFilterLabel(e.target.value)} className="rounded-lg bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-600 px-3 py-1.5 text-xs outline-none text-gray-600 dark:text-gray-200">
@@ -928,7 +992,7 @@ export default function BoardPage() {
                 <option value="">All members</option>
                 {board.members?.map(m => <option key={m.userId} value={m.userId}>{m.user.name}</option>)}
               </select>
-              {hasActiveFilters && <button onClick={() => { setSearch(""); setFilterLabel(""); setFilterAssignee(""); setActiveTab("status"); }} className="text-red-500 text-xs font-medium hover:underline">Clear</button>}
+              {hasActiveFilters && <button onClick={() => { setSearch(""); setFilterLabel(""); setFilterAssignee(""); setQuickFilter(""); setActiveTab("status"); }} className="text-red-500 text-xs font-medium hover:underline">Clear</button>}
             </div>
           )}
         </div>

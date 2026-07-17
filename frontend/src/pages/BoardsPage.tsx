@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Columns3, Plus } from "lucide-react";
 import { getWorkspaces, createBoard } from "../services/board";
 import { useToast } from "../components/ui/Toast";
@@ -9,11 +9,21 @@ import { useAuthStore } from "../store/authStore";
 
 export default function BoardsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const user = useAuthStore(s => s.user);
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewBoard, setShowNewBoard] = useState(false);
+
+  // Open the create-board form when arrived via ⌘K "Create new board" or the `b` shortcut.
+  useEffect(() => {
+    if (searchParams.get("new") === "1") {
+      setShowNewBoard(true);
+      searchParams.delete("new");
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   const [newBoardName, setNewBoardName] = useState("");
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState("");
   const [loadError, setLoadError] = useState(false);

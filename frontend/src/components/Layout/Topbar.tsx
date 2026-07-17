@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, LogOut, Moon, Sun, Shield, User, Settings } from "lucide-react";
+import { Bell, LogOut, Moon, Sun, Shield, User, Settings, Search } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { logout } from "../../services/auth";
 import RoleBadge from "../ui/RoleBadge";
@@ -90,6 +90,17 @@ export default function Topbar() {
 
   return (
     <div className="flex items-center gap-2">
+      <button
+        onClick={() => window.dispatchEvent(new CustomEvent("open-command-palette"))}
+        aria-label="Open command palette"
+        title="Command palette (Ctrl/⌘ K)"
+        className="hidden sm:flex items-center gap-2 mr-1 pl-2.5 pr-2 py-2 rounded-xl text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:text-brand hover:ring-1 hover:ring-brand/30 transition"
+      >
+        <Search size={14} />
+        <span className="text-xs">Search…</span>
+        <kbd className="text-[10px] font-medium border border-gray-300 dark:border-gray-600 rounded px-1 py-0.5 leading-none">⌘K</kbd>
+      </button>
+
       <button onClick={() => setDark(!dark)} aria-label={dark ? "Use light mode" : "Use dark mode"} title={dark ? "Use light mode" : "Use dark mode"} className="p-2.5 rounded-xl text-gray-500 dark:text-gray-300 hover:text-brand hover:bg-brand/10 transition">
         {dark ? <Sun size={16} /> : <Moon size={16} />}
       </button>
