@@ -274,9 +274,12 @@ export default function TaskModal({ task, board, onClose, onUpdate, canEdit = tr
                     />
                   </div>
                   {boardLabels.filter(l => !task.taskLabels.some(tl => tl.labelId === l.id)).filter(l => l.name.toLowerCase().includes(labelSearch.toLowerCase())).map(l => (
-                    <button key={l.id} onClick={() => handleAddLabel(l.id)} className="flex items-center gap-2 w-full px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg text-sm" style={{ color: l.colorHex }}>
-                      <span className="w-3 h-3 rounded-full" style={{ backgroundColor: l.colorHex }} />
-                      {l.name}
+                    <button key={l.id} onClick={() => handleAddLabel(l.id)} title={l.description || undefined} className="flex items-start gap-2 w-full px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg text-left">
+                      <span className="w-3 h-3 rounded-full mt-1 shrink-0" style={{ backgroundColor: l.colorHex }} />
+                      <span className="min-w-0">
+                        <span className="text-sm block truncate" style={{ color: l.colorHex }}>{l.name}</span>
+                        {l.description && <span className="text-[11px] text-gray-400 block truncate">{l.description}</span>}
+                      </span>
                     </button>
                   ))}
                   {boardLabels.filter(l => !task.taskLabels.some(tl => tl.labelId === l.id)).filter(l => l.name.toLowerCase().includes(labelSearch.toLowerCase())).length === 0 && <p className="text-xs text-gray-400 text-center py-2">No labels found</p>}
@@ -289,7 +292,7 @@ export default function TaskModal({ task, board, onClose, onUpdate, canEdit = tr
             {task.taskLabels.map(tl => {
               const Icon = attachmentIcon(tl.label.name);
               return (
-                <span key={tl.labelId} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${canEdit ? "cursor-pointer" : ""}`} style={{ backgroundColor: tl.label.colorHex + "18", color: tl.label.colorHex }} onClick={() => canEdit && handleRemoveLabel(tl.labelId)} title={canEdit ? "Remove label" : undefined}>
+                <span key={tl.labelId} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${canEdit ? "cursor-pointer" : ""}`} style={{ backgroundColor: tl.label.colorHex + "18", color: tl.label.colorHex }} onClick={() => canEdit && handleRemoveLabel(tl.labelId)} title={tl.label.description ? `${tl.label.description}${canEdit ? " — click to remove" : ""}` : (canEdit ? "Remove label" : undefined)}>
                   {tl.label.name}
                   <X size={10} />
                 </span>

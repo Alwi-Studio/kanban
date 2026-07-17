@@ -70,6 +70,7 @@ export interface Label {
   id: string;
   boardId: string;
   name: string;
+  description?: string | null;
   colorHex: string;
 }
 
@@ -238,4 +239,61 @@ export interface AutomationRuleInput {
   name?: string | null;
   conditions?: AutomationCondition[];
   actions?: AutomationAction[];
+}
+
+// Staff-activity statistics (from the MySQL staffactivity source)
+export type StaffStatsRange = "month" | "today" | "day" | "week";
+
+export interface StaffStatsPeriod {
+  year: number;
+  month: number;
+}
+
+export interface StaffStatsSummary {
+  totalStaff: number;
+  totalChat: number;
+  totalActivity: number;
+  totalPoints: number;
+  trackedDays: number;
+}
+
+export interface StaffStatsEntry {
+  uuid: string;
+  name: string | null;
+  lastActivity: number;
+  amountChat: number;
+  points: number;
+}
+
+export interface StaffStatsChartPoint {
+  year: number;
+  month: number;
+  day: number;
+  amountChat: number;
+  activityTime: number;
+  points: number;
+}
+
+export interface StaffStatistics {
+  summary: StaffStatsSummary;
+  top: StaffStatsEntry[];
+  chart: StaffStatsChartPoint[];
+  storageBytes: number;
+  periods: StaffStatsPeriod[];
+  selectedPeriod: StaffStatsPeriod | null;
+  selectedRange: StaffStatsRange;
+  selectedDateFrom: string | null;
+  selectedDateTo: string | null;
+  selectedWeek: number | null;
+  generatedAt: string;
+}
+
+export interface StaffStatsQuery {
+  range?: StaffStatsRange;
+  year?: number;
+  month?: number;
+  dateFrom?: string;
+  dateTo?: string;
+  week?: number;
+  limit?: number;
 }

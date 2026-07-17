@@ -10,17 +10,23 @@ const COOKIE_OPTIONS = {
   secure: isProduction,
   sameSite: (isProduction ? "none" : "lax") as "none" | "lax",
   path: "/api/auth",
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
+
+// The refresh cookie expires exactly when the absolute session does, so the
+// browser drops it at the 6h mark instead of lingering for days.
+function refreshCookieOptions(sessionExpiresAt: number) {
+  return { ...COOKIE_OPTIONS, maxAge: Math.max(0, sessionExpiresAt - Date.now()) };
+}
 
 export async function register(req: Request, res: Response, next: NextFunction) {
   try {
     const { name, email, password } = req.body;
     const result = await authService.register(name, email, password);
-    res.cookie(REFRESH_COOKIE, result.refreshToken, COOKIE_OPTIONS);
+    res.cookie(REFRESH_COOKIE, result.refreshToken, refreshCookieOptions(result.sessionExpiresAt));
     res.status(201).json({
       user: result.user,
       accessToken: result.accessToken,
+      sessionExpiresAt: result.sessionExpiresAt,
       workspace: result.workspace,
     });
   } catch (err) {
@@ -32,10 +38,11 @@ export async function login(req: Request, res: Response, next: NextFunction) {
   try {
     const { email, password } = req.body;
     const result = await authService.login(email, password);
-    res.cookie(REFRESH_COOKIE, result.refreshToken, COOKIE_OPTIONS);
+    res.cookie(REFRESH_COOKIE, result.refreshToken, refreshCookieOptions(result.sessionExpiresAt));
     res.json({
       user: result.user,
       accessToken: result.accessToken,
+      sessionExpiresAt: result.sessionExpiresAt,
     });
   } catch (err) {
     next(err);
@@ -49,6 +56,12 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
       return res.status(401).json({ error: "No refresh token" });
     }
     const payload = authService.verifyRefreshToken(token);
+    // Reject sessions past their absolute 6h cap, plus legacy tokens issued
+    // before the cap existed (no sessionExp) — both force a fresh login.
+    if (!payload.sessionExp || payload.sessionExp * 1000 <= Date.now()) {
+      res.clearCookie(REFRESH_COOKIE, COOKIE_OPTIONS);
+      return res.status(401).json({ error: "Session expired" });
+    }
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
       select: { id: true, name: true, email: true, createdAt: true, isGlobalAdmin: true },
@@ -56,9 +69,9 @@ export async function refresh(req: Request, res: Response, next: NextFunction) {
     if (!user) {
       return res.status(401).json({ error: "User not found" });
     }
-    const tokens = authService.refreshTokens(payload.userId, payload.email);
-    res.cookie(REFRESH_COOKIE, tokens.refreshToken, COOKIE_OPTIONS);
-    res.json({ accessToken: tokens.accessToken, user });
+    const tokens = authService.refreshTokens(payload.userId, payload.email, payload.sessionExp);
+    res.cookie(REFRESH_COOKIE, tokens.refreshToken, refreshCookieOptions(tokens.sessionExpiresAt));
+    res.json({ accessToken: tokens.accessToken, user, sessionExpiresAt: tokens.sessionExpiresAt });
   } catch (err) {
     next(err);
   }

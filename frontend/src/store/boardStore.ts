@@ -12,6 +12,7 @@ interface BoardState {
   removeColumnFromState: (colId: string) => void;
   addColumnToState: (col: Column) => void;
   addLabelToBoard: (label: Label) => void;
+  updateLabelInBoard: (label: Label) => void;
   removeLabelFromBoard: (labelId: string) => void;
   addMemberToBoard: (member: BoardMember) => void;
   updateMemberInBoard: (member: BoardMember) => void;
@@ -110,6 +111,20 @@ export const useBoardStore = create<BoardState>((set, get) => ({
     if (!board) return;
     if (board.labels?.some((l) => l.id === label.id)) return;
     set({ currentBoard: { ...board, labels: [...(board.labels || []), label] } });
+  },
+
+  updateLabelInBoard: (label) => {
+    const board = get().currentBoard;
+    if (!board) return;
+    // Keep the denormalized label copy on each task card in sync with edits.
+    const columns = board.columns.map((col) => ({
+      ...col,
+      tasks: col.tasks.map((task) => ({
+        ...task,
+        taskLabels: task.taskLabels.map((tl) => (tl.labelId === label.id ? { ...tl, label } : tl)),
+      })),
+    }));
+    set({ currentBoard: { ...board, columns, labels: board.labels?.map((l) => (l.id === label.id ? label : l)) || [] } });
   },
 
   removeLabelFromBoard: (labelId) => {

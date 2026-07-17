@@ -98,7 +98,7 @@ export default function TaskCard({ task, onDelete, onClick, labels, onAddLabel, 
       {(task.taskLabels?.length > 0 || canQuickLabel) && (
         <div className="flex flex-wrap items-center gap-1.5 mb-2">
           {task.taskLabels.map((tl) => (
-            <span key={tl.labelId} className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${getLabelClass(tl.label.colorHex)}`}>
+            <span key={tl.labelId} title={tl.label.description || undefined} className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${getLabelClass(tl.label.colorHex)}`}>
               {tl.label.name}
             </span>
           ))}
@@ -120,6 +120,7 @@ export default function TaskCard({ task, onDelete, onClick, labels, onAddLabel, 
                       key={l.id}
                       onPointerDown={stop}
                       onClick={event => { stop(event); onAddLabel!(task, l.id); setShowLabelPicker(false); }}
+                      title={l.description || undefined}
                       className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 text-xs text-gray-700 dark:text-gray-300 text-left"
                     >
                       <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: l.colorHex }} />

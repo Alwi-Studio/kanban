@@ -126,6 +126,7 @@ model Label {
   id              String           @id @default(uuid())
   boardId         String           @map("board_id")
   name            String
+  description     String?          @db.Text
   colorHex        String           @map("color_hex")
   board           Board            @relation(fields: [boardId], references: [id])
   tasks           TaskLabel[]

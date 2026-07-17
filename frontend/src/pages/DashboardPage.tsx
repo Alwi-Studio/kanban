@@ -1,11 +1,22 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LayoutDashboard, ListTodo, CheckCircle2, AlertCircle, Trophy, Layers, Clock, ArrowRight, TrendingUp, TrendingDown } from "lucide-react";
+import { LayoutDashboard, ListTodo, CheckCircle2, AlertCircle, Trophy, Layers, Clock, ArrowRight, TrendingUp, TrendingDown, Radio, Users, CalendarDays } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { getDashboardStats } from "../services/board";
+import { getStaffStatistics } from "../services/statistics";
 import StatCard from "../components/ui/StatCard";
 import Layout from "../components/Layout/Layout";
-import type { DashboardStats } from "../types";
+import type { DashboardStats, StaffStatistics } from "../types";
+
+const numberFormatter = new Intl.NumberFormat();
+
+function formatStaffDuration(milliseconds: number) {
+  const totalMinutes = Math.floor(Number(milliseconds) / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
 
 function SkeletonCard({ className = "" }: { className?: string }) {
   return (
@@ -58,6 +69,9 @@ export default function DashboardPage() {
   const [error, setError] = useState(false);
   const [period, setPeriod] = useState<Period>("30d");
   const [statsView, setStatsView] = useState<StatsView>("personal");
+  const [staffStats, setStaffStats] = useState<StaffStatistics | null>(null);
+  const [staffError, setStaffError] = useState<string | null>(null);
+  const [staffLoading, setStaffLoading] = useState(true);
 
   const loadStats = () => {
     setLoading(true);
@@ -69,6 +83,19 @@ export default function DashboardPage() {
   };
 
   useEffect(loadStats, []);
+
+  useEffect(() => {
+    setStaffLoading(true);
+    getStaffStatistics({ range: "month", limit: 5 })
+      .then((data) => { setStaffStats(data); setStaffError(null); })
+      .catch((err) => { setStaffStats(null); setStaffError(err?.response?.data?.error || "Staff statistics unavailable"); })
+      .finally(() => setStaffLoading(false));
+  }, []);
+
+  const staffChartData = (staffStats?.chart ?? []).map((point) => ({
+    label: `Day ${point.day}`,
+    points: Number(point.points),
+  }));
 
   const filteredTrends = (() => {
     if (!stats) return [];
@@ -356,6 +383,100 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="flex items-center gap-2 pt-1"><span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" /><span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Staff online</span><span className="h-px flex-1 bg-gray-200 dark:bg-gray-700" /></div>
+
+        <div className="card p-6">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <Radio size={18} className="text-brand" />
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Staff Activity Overview</h2>
+              {staffStats?.selectedPeriod && (
+                <span className="text-xs text-gray-400 hidden sm:inline">· {new Date(staffStats.selectedPeriod.year, staffStats.selectedPeriod.month - 1).toLocaleDateString(undefined, { month: "long", year: "numeric" })}</span>
+              )}
+            </div>
+            <button onClick={() => navigate("/staff")} className="text-xs text-brand hover:underline flex items-center gap-1">
+              Lihat semua <ArrowRight size={12} />
+            </button>
+          </div>
+
+          {staffLoading ? (
+            <div className="flex items-center justify-center h-[220px] text-gray-400 text-sm">Loading staff activity…</div>
+          ) : staffError ? (
+            <div className="flex flex-col items-center justify-center h-[220px] text-center gap-2">
+              <p className="text-sm text-gray-400">{staffError}</p>
+              <button onClick={() => navigate("/staff")} className="text-xs text-brand hover:underline">Open Staff Online</button>
+            </div>
+          ) : staffStats ? (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="rounded-xl bg-gray-50 dark:bg-gray-800/60 p-3">
+                    <div className="flex items-center gap-1.5 text-gray-400 mb-1"><Users size={13} /><span className="text-[10px] uppercase tracking-wide font-medium">Staff</span></div>
+                    <div className="text-lg font-bold text-gray-900 dark:text-white">{numberFormatter.format(staffStats.summary.totalStaff)}</div>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 dark:bg-gray-800/60 p-3">
+                    <div className="flex items-center gap-1.5 text-gray-400 mb-1"><Trophy size={13} /><span className="text-[10px] uppercase tracking-wide font-medium">Points</span></div>
+                    <div className="text-lg font-bold text-gray-900 dark:text-white">{numberFormatter.format(staffStats.summary.totalPoints)}</div>
+                  </div>
+                  <div className="rounded-xl bg-gray-50 dark:bg-gray-800/60 p-3">
+                    <div className="flex items-center gap-1.5 text-gray-400 mb-1"><CalendarDays size={13} /><span className="text-[10px] uppercase tracking-wide font-medium">Days</span></div>
+                    <div className="text-lg font-bold text-gray-900 dark:text-white">{numberFormatter.format(staffStats.summary.trackedDays)}</div>
+                  </div>
+                </div>
+                {staffChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={180}>
+                    <AreaChart data={staffChartData}>
+                      <defs>
+                        <linearGradient id="staffOverviewGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#6C4EF5" stopOpacity={0.2} />
+                          <stop offset="100%" stopColor="#6C4EF5" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
+                      <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#9CA3AF" }} interval="preserveStartEnd" />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 10, fill: "#9CA3AF" }} width={32} />
+                      <Tooltip contentStyle={{ background: "var(--chart-tooltip)", color: "var(--text-primary)", border: "1px solid var(--border-subtle)", borderRadius: "8px", fontSize: "12px" }} />
+                      <Area type="monotone" dataKey="points" name="Points" stroke="#6C4EF5" fill="url(#staffOverviewGrad)" strokeWidth={2} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[180px] text-gray-400 text-sm">No activity this period</div>
+                )}
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Trophy size={16} className="text-yellow-500" />
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">Top Staff</h3>
+                </div>
+                {staffStats.top.length > 0 ? (
+                  <div className="space-y-3">
+                    {staffStats.top.slice(0, 5).map((entry, i) => (
+                      <div key={entry.uuid} className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                            i === 0 ? "bg-yellow-100 text-yellow-600" :
+                            i === 1 ? "bg-gray-100 text-gray-500" :
+                            i === 2 ? "bg-orange-100 text-orange-600" :
+                            "bg-gray-50 text-gray-400 dark:bg-gray-800"
+                          }`}>{i + 1}</span>
+                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">{entry.name || "Unknown"}</span>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="text-xs font-semibold text-gray-900 dark:text-white">{numberFormatter.format(entry.points)} pts</div>
+                          <div className="text-[10px] text-gray-400">{formatStaffDuration(entry.lastActivity)}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-[160px] text-gray-400 text-sm">No staff activity</div>
+                )}
+              </div>
+            </div>
+          ) : null}
         </div>
 
       </div>

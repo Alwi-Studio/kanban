@@ -112,8 +112,17 @@ export async function getLabels(boardId: string) {
   return data as Label[];
 }
 
-export async function createLabel(boardId: string, name: string, colorHex: string) {
-  const { data } = await api.post(`/boards/${boardId}/labels`, { name, color_hex: colorHex });
+export async function createLabel(boardId: string, name: string, colorHex: string, description?: string) {
+  const { data } = await api.post(`/boards/${boardId}/labels`, { name, color_hex: colorHex, description: description || null });
+  return data as Label;
+}
+
+export async function updateLabel(boardId: string, labelId: string, changes: { name?: string; colorHex?: string; description?: string | null }) {
+  const payload: Record<string, unknown> = {};
+  if (changes.name !== undefined) payload.name = changes.name;
+  if (changes.colorHex !== undefined) payload.color_hex = changes.colorHex;
+  if (changes.description !== undefined) payload.description = changes.description || null;
+  const { data } = await api.patch(`/boards/${boardId}/labels/${labelId}`, payload);
   return data as Label;
 }
 

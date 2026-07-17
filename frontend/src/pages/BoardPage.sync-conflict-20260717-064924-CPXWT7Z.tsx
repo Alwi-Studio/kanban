@@ -2,9 +2,9 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable";
-import { Plus, Filter, List, ListTodo, X, Users, Tag, Share2, Search, Upload, ArrowUpDown, Eye, MessageSquare, Zap, Globe, ArrowRightLeft, Pencil, Copy, Check } from "lucide-react";
+import { Plus, Filter, List, ListTodo, X, Users, Tag, Share2, Search, Upload, ArrowUpDown, Eye, MessageSquare, Zap, Globe, ArrowRightLeft, Pencil, Copy } from "lucide-react";
 import { useBoardStore } from "../store/boardStore";
-import { getBoard, createColumn, deleteColumn, updateColumn, updateTask, createTask, deleteTask, createLabel, updateLabel, deleteLabel, addLabelToTask as addLabelToTaskService, getActivityLogs, inviteMember, updateMemberRole, removeMember, updateBoard, deleteBoard, getAutomationRules, createAutomationRule, updateAutomationRule, deleteAutomationRule, getTransferTargets, transferBoard } from "../services/board";
+import { getBoard, createColumn, deleteColumn, updateColumn, updateTask, createTask, deleteTask, createLabel, deleteLabel, addLabelToTask as addLabelToTaskService, getActivityLogs, inviteMember, updateMemberRole, removeMember, updateBoard, deleteBoard, getAutomationRules, createAutomationRule, updateAutomationRule, deleteAutomationRule, getTransferTargets, transferBoard } from "../services/board";
 import { connectSocket, joinBoard, leaveBoard } from "../services/socket";
 import { useToast } from "../components/ui/Toast";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
@@ -284,7 +284,6 @@ export default function BoardPage() {
     const hColumnUpdated = (col: Column) => updateColumnInState(col);
     const hColumnDeleted = ({ id: cid }: { id: string }) => removeColumnFromState(cid);
     const hLabelCreated = (label: Label) => addLabelToBoard(label);
-    const hLabelUpdated = (label: Label) => updateLabelInBoard(label);
     const hLabelDeleted = ({ id: lid }: { id: string }) => removeLabelFromBoard(lid);
     const hMemberAdded = (member: BoardMember) => addMemberToBoard(member);
     const hMemberUpdated = (member: BoardMember) => updateMemberInBoard(member);
@@ -297,7 +296,6 @@ export default function BoardPage() {
     socket.on("column:updated", hColumnUpdated);
     socket.on("column:deleted", hColumnDeleted);
     socket.on("label:created", hLabelCreated);
-    socket.on("label:updated", hLabelUpdated);
     socket.on("label:deleted", hLabelDeleted);
     socket.on("member:added", hMemberAdded);
     socket.on("member:updated", hMemberUpdated);
@@ -313,14 +311,13 @@ export default function BoardPage() {
       socket.off("column:updated", hColumnUpdated);
       socket.off("column:deleted", hColumnDeleted);
       socket.off("label:created", hLabelCreated);
-      socket.off("label:updated", hLabelUpdated);
       socket.off("label:deleted", hLabelDeleted);
       socket.off("member:added", hMemberAdded);
       socket.off("member:updated", hMemberUpdated);
       socket.off("member:removed", hMemberRemoved);
       socket.off("board:refresh", fetchBoard);
     };
-  }, [id, fetchBoard, updateTaskInState, removeTaskFromState, addTaskToState, addColumnToState, updateColumnInState, removeColumnFromState, addLabelToBoard, updateLabelInBoard, removeLabelFromBoard, addMemberToBoard, updateMemberInBoard, removeMemberFromBoard]);
+  }, [id, fetchBoard, updateTaskInState, removeTaskFromState, addTaskToState, addColumnToState, updateColumnInState, removeColumnFromState, addLabelToBoard, removeLabelFromBoard, addMemberToBoard, updateMemberInBoard, removeMemberFromBoard]);
 
   const filteredTasks = useCallback((col: Column) => {
     let tasks = col.tasks;
@@ -464,33 +461,11 @@ export default function BoardPage() {
   const handleAddLabel = async () => {
     if (!newLabelName.trim() || !id) return;
     try {
-      const label = await createLabel(id, newLabelName.trim(), newLabelColor, newLabelDesc.trim());
+      const label = await createLabel(id, newLabelName.trim(), newLabelColor);
       addLabelToBoard(label);
-      setNewLabelName(""); setNewLabelDesc(""); setNewLabelColor("#6C4EF5");
+      setNewLabelName(""); setShowNewLabel(false);
       toast(`Label created`, "success");
     } catch (error: any) { toast(apiError(error, "Failed to create label"), "error"); }
-  };
-
-  const startEditLabel = (label: Label) => {
-    setEditingLabelId(label.id);
-    setEditLabelName(label.name);
-    setEditLabelDesc(label.description || "");
-    setEditLabelColor(label.colorHex);
-  };
-
-  const cancelEditLabel = () => {
-    setEditingLabelId(null);
-    setEditLabelName(""); setEditLabelDesc(""); setEditLabelColor("#6C4EF5");
-  };
-
-  const handleSaveLabel = async () => {
-    if (!editingLabelId || !editLabelName.trim() || !id) return;
-    try {
-      const label = await updateLabel(id, editingLabelId, { name: editLabelName.trim(), colorHex: editLabelColor, description: editLabelDesc.trim() });
-      updateLabelInBoard(label);
-      cancelEditLabel();
-      toast(`Label updated`, "success");
-    } catch (error: any) { toast(apiError(error, "Failed to update label"), "error"); }
   };
 
   const handleDeleteLabel = (labelId: string, labelName: string) => {
@@ -1065,63 +1040,28 @@ export default function BoardPage() {
       )}
 
       {canManageBoard && showNewLabel && (
-        <div className="fixed left-4 right-4 sm:left-auto sm:w-96 top-24 bottom-4 bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl z-40 p-4 overflow-y-auto animate-slide-right">
-          <div className="flex items-center justify-between mb-1">
+        <div className="fixed left-4 right-4 sm:left-auto sm:w-80 top-24 bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-gray-700 shadow-xl z-40 p-4 animate-slide-right">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Tag size={15} className="text-gray-400" />
+              <Tag size={14} className="text-gray-400" />
               <h3 className="text-sm font-semibold">Labels</h3>
             </div>
-            <button onClick={() => { setShowNewLabel(false); cancelEditLabel(); }} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition"><X size={14} /></button>
+            <button onClick={() => setShowNewLabel(false)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition"><X size={14} /></button>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">Create a label with a short description so everyone knows what it means.</p>
-
-          {/* Create form */}
-          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 p-3 space-y-2 mb-4">
-            <div className="flex gap-2">
-              <input value={newLabelName} onChange={e => setNewLabelName(e.target.value)} placeholder="Label name" maxLength={50} className="input flex-1 text-sm" onKeyDown={e => e.key === 'Enter' && handleAddLabel()} />
-              <input type="color" value={newLabelColor} onChange={e => setNewLabelColor(e.target.value)} className="w-9 h-9 rounded cursor-pointer shrink-0" title="Label color" aria-label="Label color" />
-            </div>
-            <input value={newLabelDesc} onChange={e => setNewLabelDesc(e.target.value)} placeholder="Description (optional) — what is this label for?" maxLength={200} className="input w-full text-sm" onKeyDown={e => e.key === 'Enter' && handleAddLabel()} />
-            {newLabelName.trim() && (
-              <div className="flex items-center gap-2 pt-0.5">
-                <span className="text-[10px] text-gray-400 uppercase tracking-wide">Preview</span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: newLabelColor + "18", color: newLabelColor }}>{newLabelName.trim()}</span>
-              </div>
-            )}
-            <button onClick={handleAddLabel} disabled={!newLabelName.trim()} className="btn-primary text-xs w-full disabled:opacity-40 disabled:cursor-not-allowed">Create label</button>
+          <div className="flex gap-2 mb-2">
+            <input value={newLabelName} onChange={e => setNewLabelName(e.target.value)} placeholder="Label name" className="input flex-1 text-sm" onKeyDown={e => e.key === 'Enter' && handleAddLabel()} />
+            <input type="color" value={newLabelColor} onChange={e => setNewLabelColor(e.target.value)} className="w-8 h-8 rounded cursor-pointer" />
           </div>
-
-          {board.labels && board.labels.length > 0 ? (
-            <div className="space-y-1.5">
+          <button onClick={handleAddLabel} className="btn-primary text-xs w-full mb-3">Create</button>
+          {board.labels && board.labels.length > 0 && (
+            <div className="space-y-1 max-h-32 overflow-y-auto">
               {board.labels?.map(l => (
-                editingLabelId === l.id ? (
-                  <div key={l.id} className="rounded-xl border border-[#6C4EF5]/40 bg-[#6C4EF5]/5 p-3 space-y-2">
-                    <div className="flex gap-2">
-                      <input value={editLabelName} onChange={e => setEditLabelName(e.target.value)} placeholder="Label name" maxLength={50} className="input flex-1 text-sm" onKeyDown={e => e.key === 'Enter' && handleSaveLabel()} />
-                      <input type="color" value={editLabelColor} onChange={e => setEditLabelColor(e.target.value)} className="w-9 h-9 rounded cursor-pointer shrink-0" title="Label color" aria-label="Label color" />
-                    </div>
-                    <input value={editLabelDesc} onChange={e => setEditLabelDesc(e.target.value)} placeholder="Description (optional)" maxLength={200} className="input w-full text-sm" onKeyDown={e => e.key === 'Enter' && handleSaveLabel()} />
-                    <div className="flex gap-2">
-                      <button onClick={handleSaveLabel} disabled={!editLabelName.trim()} className="btn-primary text-xs flex-1 inline-flex items-center justify-center gap-1 disabled:opacity-40"><Check size={12} /> Save</button>
-                      <button onClick={cancelEditLabel} className="text-xs flex-1 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition">Cancel</button>
-                    </div>
-                  </div>
-                ) : (
-                  <div key={l.id} className="flex items-start justify-between gap-2 px-3 py-2 rounded-xl" style={{ backgroundColor: l.colorHex + "12" }}>
-                    <div className="min-w-0">
-                      <span style={{ color: l.colorHex }} className="text-xs font-semibold">{l.name}</span>
-                      {l.description && <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 break-words">{l.description}</p>}
-                    </div>
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      <button onClick={() => startEditLabel(l)} className="text-gray-400 hover:text-[#6C4EF5] p-1 rounded" aria-label="Edit label" title="Edit"><Pencil size={11} /></button>
-                      <button onClick={() => handleDeleteLabel(l.id, l.name)} className="text-gray-400 hover:text-red-500 p-1 rounded" aria-label="Delete label" title="Delete"><X size={12} /></button>
-                    </div>
-                  </div>
-                )
+                <div key={l.id} className="flex items-center justify-between px-2 py-1.5 rounded-lg text-xs" style={{ backgroundColor: l.colorHex + "12" }}>
+                  <span style={{ color: l.colorHex }} className="font-medium">{l.name}</span>
+                  <button onClick={() => handleDeleteLabel(l.id, l.name)} className="text-gray-400 hover:text-red-500 p-0.5 rounded"><X size={10} /></button>
+                </div>
               ))}
             </div>
-          ) : (
-            <p className="text-xs text-gray-400 text-center py-2">No labels yet — create your first one above.</p>
           )}
         </div>
       )}

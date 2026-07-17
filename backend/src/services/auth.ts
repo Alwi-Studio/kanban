@@ -7,6 +7,16 @@ import { sendPasswordResetEmail } from "./email";
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 
+// Absolute session lifetime, measured from login. A session is hard-capped at
+// this many hours regardless of activity — after it elapses, refresh fails and
+// the user must sign in again. Configurable via SESSION_MAX_HOURS (default 6).
+const SESSION_MAX_MS = (Number(process.env.SESSION_MAX_HOURS) || 6) * 60 * 60 * 1000;
+const ACCESS_TTL_SEC = 15 * 60; // 15 minutes
+
+function nowSec() {
+  return Math.floor(Date.now() / 1000);
+}
+
 function hashResetToken(rawToken: string) {
   return crypto.createHash("sha256").update(rawToken).digest("hex");
 }
@@ -16,14 +26,29 @@ function frontendBaseUrl() {
 }
 
 
-function generateAccessToken(payload: { userId: string; email: string }) {
-  const expiresIn = (process.env.JWT_ACCESS_EXPIRES_IN || "15m") as string;
+// Access tokens are short-lived but never allowed to outlive the absolute
+// session, so activity near the 6h boundary can't extend access past it.
+function generateAccessToken(payload: { userId: string; email: string }, sessionExpSec: number) {
+  const expiresIn = Math.max(1, Math.min(ACCESS_TTL_SEC, sessionExpSec - nowSec()));
   return jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn } as jwt.SignOptions);
 }
 
-function generateRefreshToken(payload: { userId: string; email: string }) {
-  const expiresIn = (process.env.JWT_REFRESH_EXPIRES_IN || "7d") as string;
-  return jwt.sign(payload, process.env.JWT_REFRESH_SECRET!, { expiresIn } as jwt.SignOptions);
+// The refresh token carries the fixed session-expiry timestamp and itself
+// expires exactly when the session does — so refreshing can never slide the
+// window forward past the original login + SESSION_MAX_MS.
+function generateRefreshToken(payload: { userId: string; email: string }, sessionExpSec: number) {
+  const expiresIn = Math.max(1, sessionExpSec - nowSec());
+  return jwt.sign({ ...payload, sessionExp: sessionExpSec }, process.env.JWT_REFRESH_SECRET!, { expiresIn } as jwt.SignOptions);
+}
+
+// Issues a fresh access + refresh token pair for a new session (login/register).
+function startSession(payload: { userId: string; email: string }) {
+  const sessionExpSec = nowSec() + Math.floor(SESSION_MAX_MS / 1000);
+  return {
+    accessToken: generateAccessToken(payload, sessionExpSec),
+    refreshToken: generateRefreshToken(payload, sessionExpSec),
+    sessionExpiresAt: sessionExpSec * 1000,
+  };
 }
 
 export async function register(name: string, email: string, password: string) {
@@ -68,14 +93,13 @@ export async function register(name: string, email: string, password: string) {
     },
   });
 
-  const payload = { userId: user.id, email: user.email };
-  const accessToken = generateAccessToken(payload);
-  const refreshToken = generateRefreshToken(payload);
+  const session = startSession({ userId: user.id, email: user.email });
 
   return {
     user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt, isGlobalAdmin: user.isGlobalAdmin },
-    accessToken,
-    refreshToken,
+    accessToken: session.accessToken,
+    refreshToken: session.refreshToken,
+    sessionExpiresAt: session.sessionExpiresAt,
     workspace,
   };
 }
@@ -91,14 +115,13 @@ export async function login(email: string, password: string) {
     throw new (require("../middlewares/errorHandler").AppError)(401, "Invalid email or password");
   }
 
-  const payload = { userId: user.id, email: user.email };
-  const accessToken = generateAccessToken(payload);
-  const refreshToken = generateRefreshToken(payload);
+  const session = startSession({ userId: user.id, email: user.email });
 
   return {
     user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt, isGlobalAdmin: user.isGlobalAdmin },
-    accessToken,
-    refreshToken,
+    accessToken: session.accessToken,
+    refreshToken: session.refreshToken,
+    sessionExpiresAt: session.sessionExpiresAt,
   };
 }
 
@@ -152,6 +175,7 @@ export function verifyRefreshToken(token: string) {
     const payload = jwt.verify(token, process.env.JWT_REFRESH_SECRET!) as {
       userId: string;
       email: string;
+      sessionExp?: number;
     };
     return payload;
   } catch {
@@ -159,9 +183,16 @@ export function verifyRefreshToken(token: string) {
   }
 }
 
-export function refreshTokens(userId: string, email: string) {
+// Re-issues tokens for an existing session WITHOUT extending its absolute
+// expiry. sessionExpSec is the fixed expiry carried by the original login.
+export function refreshTokens(userId: string, email: string, sessionExpSec: number) {
+  if (!sessionExpSec || sessionExpSec <= nowSec()) {
+    throw new (require("../middlewares/errorHandler").AppError)(401, "Session expired");
+  }
   const payload = { userId, email };
-  const accessToken = generateAccessToken(payload);
-  const refreshToken = generateRefreshToken(payload);
-  return { accessToken, refreshToken };
+  return {
+    accessToken: generateAccessToken(payload, sessionExpSec),
+    refreshToken: generateRefreshToken(payload, sessionExpSec),
+    sessionExpiresAt: sessionExpSec * 1000,
+  };
 }

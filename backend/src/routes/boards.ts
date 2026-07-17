@@ -29,8 +29,17 @@ const updateBoardSchema = z.object({
 const createColumnSchema = z.object({ name: z.string().trim().min(1).max(100) });
 const createLabelSchema = z.object({
   name: z.string().trim().min(1).max(50),
+  description: z.string().trim().max(200).nullish(),
   color_hex: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid label color"),
 });
+const updateLabelSchema = z.object({
+  name: z.string().trim().min(1).max(50).optional(),
+  description: z.string().trim().max(200).nullish(),
+  color_hex: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Invalid label color").optional(),
+}).refine(
+  value => value.name !== undefined || value.description !== undefined || value.color_hex !== undefined,
+  "No changes supplied",
+);
 const triggerTypeEnum = z.enum([
   "TASK_CREATED", "TASK_MOVED", "LABEL_ADDED", "LABEL_REMOVED",
   "ASSIGNEE_ADDED", "ASSIGNEE_REMOVED", "TASK_COMPLETED",
@@ -115,12 +124,30 @@ boardRouter.get("/:id/labels", authenticate, requireRole("admin", "owner", "pm",
 
 boardRouter.post("/:id/labels", authenticate, requireRole("admin", "owner")(), validate(createLabelSchema), async (req, res, next) => {
   try {
-    const { name, color_hex } = req.body;
+    const { name, description, color_hex } = req.body;
     const label = await prisma.label.create({
-      data: { boardId: req.params.id, name, colorHex: color_hex },
+      data: { boardId: req.params.id, name, description: description || null, colorHex: color_hex },
     });
     emitBoardEvent(req.params.id, "label:created", label);
     res.status(201).json(label);
+  } catch (err) { next(err); }
+});
+
+boardRouter.patch("/:id/labels/:labelId", authenticate, requireRole("admin", "owner")(), validate(updateLabelSchema), async (req, res, next) => {
+  try {
+    const existing = await prisma.label.findFirst({ where: { id: req.params.labelId, boardId: req.params.id } });
+    if (!existing) throw new AppError(404, "Label not found");
+    const { name, description, color_hex } = req.body;
+    const label = await prisma.label.update({
+      where: { id: req.params.labelId },
+      data: {
+        ...(name !== undefined ? { name } : {}),
+        ...(description !== undefined ? { description: description || null } : {}),
+        ...(color_hex !== undefined ? { colorHex: color_hex } : {}),
+      },
+    });
+    emitBoardEvent(req.params.id, "label:updated", label);
+    res.json(label);
   } catch (err) { next(err); }
 });
 
