@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { Crown, Search, ShieldCheck, Users as UsersIcon } from "lucide-react";
+import { Crown, KeyRound, Search, ShieldCheck, Trash2, Users as UsersIcon, X } from "lucide-react";
 import Layout from "../components/Layout/Layout";
 import RoleBadge from "../components/ui/RoleBadge";
 import StatCard from "../components/ui/StatCard";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import { useToast } from "../components/ui/Toast";
 import { useAuthStore } from "../store/authStore";
-import { getAdminUsers, setGlobalAdmin } from "../services/admin";
+import { deleteUser, getAdminUsers, setGlobalAdmin, setUserPassword } from "../services/admin";
 import type { AdminUser } from "../types";
 
 function apiError(error: any, fallback: string) {
@@ -34,6 +34,10 @@ export default function AdminPage() {
   const [search, setSearch] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [pending, setPending] = useState<{ user: AdminUser; next: boolean } | null>(null);
+  const [passwordUser, setPasswordUser] = useState<AdminUser | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [deletePending, setDeletePending] = useState<AdminUser | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -69,6 +73,48 @@ export default function AdminPage() {
       toast(next ? `${updated.name} is now a global admin` : `Removed global admin from ${updated.name}`, "success");
     } catch (error: any) {
       toast(apiError(error, "Failed to update admin access"), "error");
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const savePassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!passwordUser) return;
+    if (newPassword.length < 6) {
+      toast("Password must be at least 6 characters", "error");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast("Passwords do not match", "error");
+      return;
+    }
+
+    setSavingId(passwordUser.id);
+    try {
+      await setUserPassword(passwordUser.id, newPassword);
+      toast(`Password updated for ${passwordUser.name}`, "success");
+      setPasswordUser(null);
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      toast(apiError(error, "Failed to update password"), "error");
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!deletePending) return;
+    const target = deletePending;
+    setDeletePending(null);
+    setSavingId(target.id);
+    try {
+      await deleteUser(target.id);
+      setUsers(current => current.filter(user => user.id !== target.id));
+      toast(`${target.name}'s account was deleted`, "success");
+    } catch (error: any) {
+      toast(apiError(error, "Failed to delete account"), "error");
     } finally {
       setSavingId(null);
     }
@@ -156,13 +202,34 @@ export default function AdminPage() {
                   ))}
                 </div>
 
-                <div className="shrink-0">
+                <div className="shrink-0 flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setPasswordUser(u);
+                      setNewPassword("");
+                      setConfirmPassword("");
+                    }}
+                    disabled={savingId === u.id}
+                    className="btn-secondary text-xs inline-flex items-center gap-1.5"
+                    title={`Change password for ${u.name}`}
+                  >
+                    <KeyRound size={13} /> Password
+                  </button>
                   <button
                     onClick={() => setPending({ user: u, next: !u.isGlobalAdmin })}
                     disabled={savingId === u.id}
                     className={u.isGlobalAdmin ? "btn-secondary text-xs" : "btn-primary text-xs"}
                   >
                     {savingId === u.id ? "Saving…" : u.isGlobalAdmin ? "Revoke admin" : "Make admin"}
+                  </button>
+                  <button
+                    onClick={() => setDeletePending(u)}
+                    disabled={isSelf || savingId === u.id}
+                    className="p-2 rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition disabled:opacity-40 disabled:cursor-not-allowed"
+                    title={isSelf ? "You cannot delete your own account here" : `Delete ${u.name}'s account`}
+                    aria-label={`Delete ${u.name}'s account`}
+                  >
+                    <Trash2 size={15} />
                   </button>
                 </div>
               </div>
@@ -184,6 +251,48 @@ export default function AdminPage() {
         onConfirm={confirmToggle}
         onCancel={() => setPending(null)}
       />
+
+      <ConfirmDialog
+        open={!!deletePending}
+        title="Delete account?"
+        message={`${deletePending?.name}'s account, owned workspaces, and boards will be permanently deleted. This cannot be undone.`}
+        confirmLabel="Delete account"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeletePending(null)}
+      />
+
+      {passwordUser && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setPasswordUser(null)} />
+          <form onSubmit={savePassword} className="relative bg-white dark:bg-surface-dark rounded-2xl border border-gray-200 dark:border-gray-700 shadow-2xl p-6 w-full max-w-sm z-10 animate-scale-in">
+            <div className="flex items-start justify-between gap-3 mb-5">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Change password</h3>
+                <p className="text-xs text-gray-500 mt-1">Set a new password for {passwordUser.name}.</p>
+              </div>
+              <button type="button" onClick={() => setPasswordUser(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" aria-label="Close">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label htmlFor="admin-new-password" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">New password</label>
+                <input id="admin-new-password" type="password" value={newPassword} onChange={event => setNewPassword(event.target.value)} minLength={6} autoComplete="new-password" className="input" autoFocus required />
+              </div>
+              <div>
+                <label htmlFor="admin-confirm-password" className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">Confirm password</label>
+                <input id="admin-confirm-password" type="password" value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} minLength={6} autoComplete="new-password" className="input" required />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-5">
+              <button type="button" onClick={() => setPasswordUser(null)} className="btn-secondary text-xs">Cancel</button>
+              <button type="submit" disabled={savingId === passwordUser.id} className="btn-primary text-xs">
+                {savingId === passwordUser.id ? "Saving…" : "Update password"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </Layout>
   );
 }
