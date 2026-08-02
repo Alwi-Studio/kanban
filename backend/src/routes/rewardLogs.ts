@@ -88,7 +88,7 @@ rewardLogsRouter.get("/", authenticate, async (req, res) => {
     const where = search
       ? `WHERE ${searchColumns.map(column => `\`${column}\` LIKE ?`).join(" OR ")}`
       : "";
-    const searchParameters = searchColumns.map(() => `%${search}%`);
+    const searchParameters = search ? searchColumns.map(() => `%${search}%`) : [];
 
     const [rows, countRows] = await Promise.all([
       pool.query<RowDataPacket[]>(
