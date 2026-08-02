@@ -15,6 +15,7 @@ import { dashboardRouter } from "./routes/dashboard";
 import { globalBoardRouter } from "./routes/globalBoard";
 import { adminRouter } from "./routes/admin";
 import { statisticsRouter } from "./routes/statistics";
+import { rewardLogsRouter } from "./routes/rewardLogs";
 import { errorHandler } from "./middlewares/errorHandler";
 import { setupSocket } from "./sockets";
 import { getAttachmentStorageStatus, UPLOAD_DIR } from "./middlewares/upload";
@@ -89,6 +90,7 @@ app.use("/api/dashboard", dashboardRouter);
 app.use("/api/global-board", globalBoardRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/statistics", statisticsRouter);
+app.use("/api/reward-logs", rewardLogsRouter);
 
 app.get("/health", (_req, res) => res.status(200).json({ status: "ok", attachmentStorage: getAttachmentStorageStatus() }));
 

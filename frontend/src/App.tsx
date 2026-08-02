@@ -14,6 +14,7 @@ const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
 const StaffStatsPage = lazy(() => import("./pages/StaffStatsPage"));
+const RewardLogsPage = lazy(() => import("./pages/RewardLogsPage"));
 
 function AppLoading() {
   return (
@@ -73,6 +74,7 @@ export default function App() {
         <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
         <Route path="/staff" element={<ProtectedRoute><StaffStatsPage /></ProtectedRoute>} />
+        <Route path="/reward-logs" element={<ProtectedRoute><RewardLogsPage /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes></Suspense>
     </ToastProvider>

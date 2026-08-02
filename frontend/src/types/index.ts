@@ -302,3 +302,30 @@ export interface StaffStatsQuery {
   week?: number;
   limit?: number;
 }
+
+export type RewardLogNetwork = "alwination" | "minegens";
+
+export interface RewardLogEntry {
+  id: string;
+  executed_at: string;
+  executor_uuid: string | null;
+  executor_name: string;
+  target_uuid: string;
+  target_name: string;
+  invoice_id: string | null;
+  source: string;
+  type: string;
+  product: string;
+  amount: string | null;
+  rank_set: string | null;
+  applied: number;
+  failed: number;
+  benefits: unknown;
+}
+
+export interface RewardLogResponse {
+  network: RewardLogNetwork;
+  entries: RewardLogEntry[];
+  pagination: { page: number; limit: number; total: number; totalPages: number };
+  generatedAt: string;
+}

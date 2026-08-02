@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Columns3, LayoutDashboard, Layers3, LogOut, Radio, Search, Settings, Shield, User, X, Command } from "lucide-react";
+import { Columns3, Database, LayoutDashboard, Layers3, LogOut, Radio, Search, Settings, Shield, User, X, Command } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
 import { logout } from "../../services/auth";
 import RoleBadge from "../ui/RoleBadge";
@@ -10,6 +10,7 @@ const menuItems = [
   { icon: Layers3, label: "Global board", path: "/global", adminOnly: false },
   { icon: Columns3, label: "Boards", path: "/boards", adminOnly: false },
   { icon: Radio, label: "Staff Online", path: "/staff", adminOnly: false },
+  { icon: Database, label: "Reward Logs", path: "/reward-logs", adminOnly: false },
   { icon: Shield, label: "Admin", path: "/admin", adminOnly: true },
   { icon: User, label: "Profile", path: "/profile", adminOnly: false },
   { icon: Settings, label: "Settings", path: "/settings", adminOnly: false },
