@@ -9,11 +9,6 @@ const NETWORKS: { id: RewardLogNetwork; label: string }[] = [
   { id: "minegens", label: "MineGens" },
 ];
 
-function compactUuid(value: string | null) {
-  if (!value) return "—";
-  return `${value.slice(0, 8)}…${value.slice(-4)}`;
-}
-
 function formatDate(value: string) {
   return new Date(value).toLocaleString(undefined, {
     year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
@@ -43,8 +38,8 @@ function LogRow({ entry }: { entry: RewardLogEntry }) {
     <tr className="border-b border-gray-100 align-top last:border-0 hover:bg-gray-50/80 dark:border-gray-800 dark:hover:bg-gray-800/40">
       <td className="px-3 py-2 font-mono text-[11px] font-semibold text-gray-700 dark:text-gray-200">{entry.id}</td>
       <td className="whitespace-nowrap px-3 py-2 text-[11px] text-gray-500 dark:text-gray-400">{formatDate(entry.executed_at)}</td>
-      <td className="px-3 py-2"><div className="text-xs font-medium text-gray-800 dark:text-gray-200">{entry.executor_name}</div><div className="font-mono text-[10px] text-gray-400" title={entry.executor_uuid || "Console"}>{entry.executor_uuid ? compactUuid(entry.executor_uuid) : "Console"}</div></td>
-      <td className="px-3 py-2"><div className="text-xs font-medium text-gray-800 dark:text-gray-200">{entry.target_name}</div><div className="font-mono text-[10px] text-gray-400" title={entry.target_uuid}>{compactUuid(entry.target_uuid)}</div></td>
+      <td className="px-3 py-2"><div className="text-xs font-medium text-gray-800 dark:text-gray-200">{entry.executor_name}</div><div className="whitespace-nowrap font-mono text-[10px] text-gray-400">{entry.executor_uuid || "Console"}</div></td>
+      <td className="px-3 py-2"><div className="text-xs font-medium text-gray-800 dark:text-gray-200">{entry.target_name}</div><div className="whitespace-nowrap font-mono text-[10px] text-gray-400">{entry.target_uuid}</div></td>
       <td className="px-3 py-2 font-mono text-[10px] text-gray-500 dark:text-gray-400">{entry.invoice_id || "—"}</td>
       <td className="whitespace-nowrap px-3 py-2 text-[11px] text-gray-600 dark:text-gray-300">{entry.source}</td>
       <td className="px-3 py-2"><span className="rounded-md bg-brand/10 px-2 py-1 text-[10px] font-semibold uppercase text-brand dark:text-brand-200">{entry.type}</span></td>
@@ -127,7 +122,7 @@ export default function RewardLogsPage() {
           </div>
         ) : (
           <div className="min-h-0 flex-1 overflow-auto scrollbar-thin">
-            <table className="min-w-[1580px] w-full border-collapse text-left">
+            <table className="min-w-[1900px] w-full border-collapse text-left">
               <thead className="sticky top-0 z-10 bg-gray-50/95 text-[10px] uppercase tracking-wide text-gray-400 backdrop-blur dark:bg-gray-900/95">
                 <tr>{["ID", "Executed at", "Executor / UUID", "Target / UUID", "Invoice ID", "Source", "Type", "Product", "Amount", "Rank set", "Applied", "Failed", "Benefits JSON"].map(label => <th key={label} className="whitespace-nowrap border-b border-gray-200 px-3 py-2 font-semibold dark:border-gray-700">{label}</th>)}</tr>
               </thead>
